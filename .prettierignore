@@ -1,0 +1,8 @@
+node_modules
+dist
+.next
+pnpm-lock.yaml
+packages/*/dist
+apps/web/.next
+drizzle/meta
+*.min.js

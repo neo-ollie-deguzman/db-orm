@@ -1,0 +1,44 @@
+{
+  "name": "db-orm-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "generate:openapi": "pnpm --filter @repo/api-contracts generate:openapi",
+    "check:contracts": "node scripts/check-contract-usage.mjs",
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "start": "pnpm --filter web start",
+    "lint": "pnpm --filter web lint",
+    "db:generate": "pnpm --filter web db:generate",
+    "db:migrate": "pnpm --filter web db:migrate",
+    "db:push": "pnpm --filter web db:push",
+    "db:studio": "pnpm --filter web db:studio",
+    "db:seed": "pnpm --filter web db:seed",
+    "db:migrate-tenancy": "pnpm --filter web db:migrate-tenancy",
+    "db:migrate-auth": "pnpm --filter web db:migrate-auth",
+    "db:apply-rls": "pnpm --filter web db:apply-rls",
+    "typecheck": "pnpm -r exec tsc --noEmit",
+    "test": "pnpm run test:api",
+    "test:api": "pnpm --filter web test:api",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.1",
+    "prettier": "^3.8.1",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx,json,md,css,mjs}": [
+      "prettier --write"
+    ]
+  }
+}

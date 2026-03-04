@@ -1,0 +1,29 @@
+{
+  "name": "@repo/core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@repo/db": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.44.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "typescript": "^5.7.0"
+  },
+  "files": [
+    "dist"
+  ]
+}
