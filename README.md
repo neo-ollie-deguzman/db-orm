@@ -229,6 +229,10 @@ All scripts are run from the monorepo root via `pnpm`:
 | Package Manager | pnpm 9.15 (workspaces)                                                        |
 | Runtime         | Node.js >= 20                                                                 |
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for branch naming, commit conventions, and development workflow.
+
 ## Project Documentation
 
 Detailed design documents are in the `docs/` directory:
