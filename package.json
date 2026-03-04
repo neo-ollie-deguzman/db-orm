@@ -6,7 +6,7 @@
     "generate:openapi": "pnpm --filter @repo/api-contracts generate:openapi",
     "check:contracts": "node scripts/check-contract-usage.mjs",
     "dev": "pnpm --filter web dev",
-    "build": "pnpm --filter web build",
+    "build": "pnpm run build:packages && pnpm --filter web build",
     "start": "pnpm --filter web start",
     "lint": "pnpm --filter web lint",
     "db:generate": "pnpm --filter web db:generate",
