@@ -25,13 +25,13 @@ apps/web  →  @repo/core  →  @repo/db
           →  @repo/api-contracts
 ```
 
-| Package | Responsibility |
-|---|---|
-| `@repo/db` | Drizzle ORM schema definitions, Neon Postgres client, `withTenant()` RLS transaction helper, and migration files |
-| `@repo/core` | Framework-agnostic business logic — use-case functions that accept `(tenantId, input)` and use `@repo/db` internally. No HTTP or framework types leak in. |
-| `@repo/auth` | JWT session verification (via `jose`) and API key validation stub. Provides `AuthContext` for route handlers. |
-| `@repo/api-contracts` | Zod schemas for all API request/response shapes, plus a script to generate an `openapi.json` spec from those schemas. |
-| `web` | Next.js application — API routes, React UI (Tailwind CSS v4), middleware for auth and tenant resolution. |
+| Package               | Responsibility                                                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@repo/db`            | Drizzle ORM schema definitions, Neon Postgres client, `withTenant()` RLS transaction helper, and migration files                                          |
+| `@repo/core`          | Framework-agnostic business logic — use-case functions that accept `(tenantId, input)` and use `@repo/db` internally. No HTTP or framework types leak in. |
+| `@repo/auth`          | JWT session verification (via `jose`) and API key validation stub. Provides `AuthContext` for route handlers.                                             |
+| `@repo/api-contracts` | Zod schemas for all API request/response shapes, plus a script to generate an `openapi.json` spec from those schemas.                                     |
+| `web`                 | Next.js application — API routes, React UI (Tailwind CSS v4), middleware for auth and tenant resolution.                                                  |
 
 ## Multi-Tenancy
 
@@ -53,13 +53,13 @@ Results are cached in-memory with a 60-second TTL.
 
 Four core tables with full Drizzle relations defined:
 
-| Table | Key Columns |
-|---|---|
-| `tenants` | `id` (uuid), `name`, `slug` (unique), `region`, `plan`, `is_active` |
-| `tenant_domains` | `id` (uuid), `tenant_id` (FK), `domain` (unique), `type` (subdomain/custom), `is_verified` |
-| `tenant_memberships` | `id` (uuid), `tenant_id` (FK), `user_id` (FK), `role` (owner/admin/member) |
-| `users` | `id` (serial), `tenant_id` (FK), `name`, `email`, `password_hash`, RLS-enforced |
-| `reminders` | `id` (serial), `tenant_id` (FK), `user_id` (FK), `note`, `status` (pending/completed/dismissed), `reminder_date`, RLS-enforced |
+| Table                | Key Columns                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `tenants`            | `id` (uuid), `name`, `slug` (unique), `region`, `plan`, `is_active`                                                            |
+| `tenant_domains`     | `id` (uuid), `tenant_id` (FK), `domain` (unique), `type` (subdomain/custom), `is_verified`                                     |
+| `tenant_memberships` | `id` (uuid), `tenant_id` (FK), `user_id` (FK), `role` (owner/admin/member)                                                     |
+| `users`              | `id` (serial), `tenant_id` (FK), `name`, `email`, `password_hash`, RLS-enforced                                                |
+| `reminders`          | `id` (serial), `tenant_id` (FK), `user_id` (FK), `note`, `status` (pending/completed/dismissed), `reminder_date`, RLS-enforced |
 
 Soft deletes are used for `users` and `reminders` (`is_deleted`, `deleted_at`).
 
@@ -74,21 +74,21 @@ Soft deletes are used for `users` and `reminders` (`is_deleted`, `deleted_at`).
 
 All endpoints require authentication (session cookie) except login.
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/auth/login` | Authenticate and create session |
-| `POST` | `/api/auth/logout` | Destroy session |
-| `GET` | `/api/me` | Current authenticated user |
-| `GET` | `/api/users` | List users in tenant |
-| `POST` | `/api/users` | Create a user |
-| `GET` | `/api/users/:id` | Get user by ID |
-| `PATCH` | `/api/users/:id` | Update a user |
-| `DELETE` | `/api/users/:id` | Soft-delete a user |
-| `GET` | `/api/reminders` | List reminders in tenant |
-| `POST` | `/api/reminders` | Create a reminder |
-| `GET` | `/api/reminders/:id` | Get reminder by ID |
-| `PATCH` | `/api/reminders/:id` | Update a reminder |
-| `DELETE` | `/api/reminders/:id` | Soft-delete a reminder |
+| Method   | Path                 | Description                     |
+| -------- | -------------------- | ------------------------------- |
+| `POST`   | `/api/auth/login`    | Authenticate and create session |
+| `POST`   | `/api/auth/logout`   | Destroy session                 |
+| `GET`    | `/api/me`            | Current authenticated user      |
+| `GET`    | `/api/users`         | List users in tenant            |
+| `POST`   | `/api/users`         | Create a user                   |
+| `GET`    | `/api/users/:id`     | Get user by ID                  |
+| `PATCH`  | `/api/users/:id`     | Update a user                   |
+| `DELETE` | `/api/users/:id`     | Soft-delete a user              |
+| `GET`    | `/api/reminders`     | List reminders in tenant        |
+| `POST`   | `/api/reminders`     | Create a reminder               |
+| `GET`    | `/api/reminders/:id` | Get reminder by ID              |
+| `PATCH`  | `/api/reminders/:id` | Update a reminder               |
+| `DELETE` | `/api/reminders/:id` | Soft-delete a reminder          |
 
 Request and response shapes are defined in `@repo/api-contracts` and enforced at both the API layer (Zod parsing) and response level (runtime schema validation).
 
@@ -126,15 +126,15 @@ cp .env.example .env
 
 Required variables:
 
-| Variable | Description |
-|---|---|
+| Variable       | Description                                                          |
+| -------------- | -------------------------------------------------------------------- |
 | `DATABASE_URL` | Neon Postgres connection string (`postgresql://...?sslmode=require`) |
-| `JWT_SECRET` | Secret for signing session JWTs (min 32 chars in production) |
+| `JWT_SECRET`   | Secret for signing session JWTs (min 32 chars in production)         |
 
 Optional:
 
-| Variable | Description |
-|---|---|
+| Variable     | Description                                                    |
+| ------------ | -------------------------------------------------------------- |
 | `APP_DOMAIN` | Base domain for subdomain tenant resolution (e.g. `myapp.com`) |
 
 ### 3. Run database migrations
@@ -150,6 +150,7 @@ pnpm db:apply-rls
 ```
 
 This runs `packages/db/drizzle/custom/0001_enable_rls.sql` which:
+
 - Forces RLS on `users` and `reminders` tables
 - Creates an `app_user` PostgreSQL role with scoped permissions
 - Grants the connecting role permission to `SET ROLE app_user`
@@ -168,11 +169,11 @@ pnpm db:seed
 
 This creates three tenants, 15 users across them, tenant memberships, and 70 sample reminders.
 
-| Tenant | Slug | Users |
-|---|---|---|
-| Acme Corp | `acme` | 5 (Alice, Bob, Carol, David, Eva) |
-| Globex Inc | `globex` | 5 (Frank, Grace, Henry, Iris, Jack) |
-| Initech Systems | `initech` | 5 (Liam, Mia, Noah, Olivia, Peter) |
+| Tenant          | Slug      | Users                               |
+| --------------- | --------- | ----------------------------------- |
+| Acme Corp       | `acme`    | 5 (Alice, Bob, Carol, David, Eva)   |
+| Globex Inc      | `globex`  | 5 (Frank, Grace, Henry, Iris, Jack) |
+| Initech Systems | `initech` | 5 (Liam, Mia, Noah, Olivia, Peter)  |
 
 All seed accounts use the password: `passworD123`
 
@@ -195,38 +196,38 @@ In local development, use subdomain-style hostnames or the `X-Tenant-Slug` heade
 
 All scripts are run from the monorepo root via `pnpm`:
 
-| Script | Description |
-|---|---|
-| `pnpm dev` | Start Next.js dev server with Turbopack |
-| `pnpm build` | Production build |
-| `pnpm start` | Start production server |
-| `pnpm lint` | Run Next.js linter |
-| `pnpm db:generate` | Generate Drizzle migration files from schema changes |
-| `pnpm db:migrate` | Run pending migrations |
-| `pnpm db:push` | Push schema directly (skip migration files) |
-| `pnpm db:studio` | Open Drizzle Studio (database GUI) |
-| `pnpm db:seed` | Seed database with sample data |
-| `pnpm db:migrate-tenancy` | Run tenancy-specific migration |
-| `pnpm db:migrate-auth` | Run auth-specific migration |
-| `pnpm db:apply-rls` | Apply RLS policies and create `app_user` role |
-| `pnpm test:api` | Run API integration tests |
-| `pnpm generate:openapi` | Generate OpenAPI spec from contracts |
-| `pnpm check:contracts` | Verify API routes import from `@repo/api-contracts` |
+| Script                    | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
+| `pnpm dev`                | Start Next.js dev server with Turbopack              |
+| `pnpm build`              | Production build                                     |
+| `pnpm start`              | Start production server                              |
+| `pnpm lint`               | Run Next.js linter                                   |
+| `pnpm db:generate`        | Generate Drizzle migration files from schema changes |
+| `pnpm db:migrate`         | Run pending migrations                               |
+| `pnpm db:push`            | Push schema directly (skip migration files)          |
+| `pnpm db:studio`          | Open Drizzle Studio (database GUI)                   |
+| `pnpm db:seed`            | Seed database with sample data                       |
+| `pnpm db:migrate-tenancy` | Run tenancy-specific migration                       |
+| `pnpm db:migrate-auth`    | Run auth-specific migration                          |
+| `pnpm db:apply-rls`       | Apply RLS policies and create `app_user` role        |
+| `pnpm test:api`           | Run API integration tests                            |
+| `pnpm generate:openapi`   | Generate OpenAPI spec from contracts                 |
+| `pnpm check:contracts`    | Verify API routes import from `@repo/api-contracts`  |
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router, React 19, Turbopack) |
-| Language | TypeScript 5.7+ |
-| Database | PostgreSQL (Neon serverless) |
-| ORM | Drizzle ORM 0.44 |
-| Styling | Tailwind CSS v4 |
-| Auth | JWT (jose), bcryptjs |
-| Validation | Zod |
-| API Spec | OpenAPI 3.0 (generated from Zod schemas via `@asteasolutions/zod-to-openapi`) |
-| Package Manager | pnpm 9.15 (workspaces) |
-| Runtime | Node.js >= 20 |
+| Layer           | Technology                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| Framework       | Next.js 16 (App Router, React 19, Turbopack)                                  |
+| Language        | TypeScript 5.7+                                                               |
+| Database        | PostgreSQL (Neon serverless)                                                  |
+| ORM             | Drizzle ORM 0.44                                                              |
+| Styling         | Tailwind CSS v4                                                               |
+| Auth            | JWT (jose), bcryptjs                                                          |
+| Validation      | Zod                                                                           |
+| API Spec        | OpenAPI 3.0 (generated from Zod schemas via `@asteasolutions/zod-to-openapi`) |
+| Package Manager | pnpm 9.15 (workspaces)                                                        |
+| Runtime         | Node.js >= 20                                                                 |
 
 ## Project Documentation
 
