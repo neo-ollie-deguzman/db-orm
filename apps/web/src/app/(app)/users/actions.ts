@@ -1,8 +1,13 @@
 "use server";
 
 import * as core from "@repo/core";
+import {
+  CreateUserBodySchema,
+  UpdateUserBodySchema,
+} from "@repo/api-contracts";
 import { revalidatePath } from "next/cache";
 import { getTenantId } from "@/lib/tenant";
+import crypto from "node:crypto";
 
 export async function getUsers() {
   const tenantId = await getTenantId();
@@ -10,14 +15,22 @@ export async function getUsers() {
 }
 
 export async function createUser(formData: FormData) {
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const avatarUrl = (formData.get("avatarUrl") as string) || null;
-  const location = (formData.get("location") as string) || null;
+  const raw = {
+    name: formData.get("name") ?? "",
+    email: formData.get("email") ?? "",
+    avatarUrl: formData.get("avatarUrl") || undefined,
+    location: formData.get("location") || undefined,
+  };
 
-  if (!name || !email) {
-    return { error: "Name and email are required." };
+  const parsed = CreateUserBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const message =
+      Object.values(fieldErrors).flat().join(". ") || "Validation failed";
+    return { error: message };
   }
+
+  const { name, email, avatarUrl, location } = parsed.data;
 
   try {
     const tenantId = await getTenantId();
@@ -45,8 +58,16 @@ export async function updateUser(id: string, formData: FormData) {
   const avatarUrl = (formData.get("avatarUrl") as string) || null;
   const location = (formData.get("location") as string) || null;
 
-  if (!name || !email) {
-    return { error: "Name and email are required." };
+  if (Object.keys(raw).length === 0) {
+    return { error: "No fields to update." };
+  }
+
+  const parsed = UpdateUserBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const message =
+      Object.values(fieldErrors).flat().join(". ") || "Validation failed";
+    return { error: message };
   }
 
   try {
