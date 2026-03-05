@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import ws from "ws";
 import {
+  accounts,
   reminders,
   schema,
   tenantDomains,
@@ -63,7 +64,6 @@ async function seed() {
 
   const pool = new Pool({ connectionString: url });
 
-  // Temporarily disable FORCE RLS so the seed can write without tenant context
   const admin = await pool.connect();
   await admin.query("ALTER TABLE users DISABLE ROW LEVEL SECURITY");
   await admin.query("ALTER TABLE reminders DISABLE ROW LEVEL SECURITY");
@@ -129,124 +129,124 @@ async function seed() {
 
   const seedUsers = [
     {
+      id: crypto.randomUUID(),
       name: "Alice Johnson",
       email: "alice.johnson@example.com",
       location: "New York, NY",
-      avatarUrl: "https://i.pravatar.cc/150?u=alice",
+      image: "https://i.pravatar.cc/150?u=alice",
       tenantId: acmeTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Bob Smith",
       email: "bob.smith@example.com",
       location: "San Francisco, CA",
-      avatarUrl: "https://i.pravatar.cc/150?u=bob",
+      image: "https://i.pravatar.cc/150?u=bob",
       tenantId: acmeTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Carol Williams",
       email: "carol.williams@example.com",
       location: "Chicago, IL",
-      avatarUrl: "https://i.pravatar.cc/150?u=carol",
+      image: "https://i.pravatar.cc/150?u=carol",
       tenantId: acmeTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "David Brown",
       email: "david.brown@example.com",
       location: "Austin, TX",
-      avatarUrl: null,
+      image: null,
       tenantId: acmeTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Eva Martinez",
       email: "eva.martinez@example.com",
       location: "Miami, FL",
-      avatarUrl: "https://i.pravatar.cc/150?u=eva",
+      image: "https://i.pravatar.cc/150?u=eva",
       tenantId: acmeTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Frank Lee",
       email: "frank.lee@example.com",
       location: "Seattle, WA",
-      avatarUrl: null,
+      image: null,
       tenantId: globexTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Grace Kim",
       email: "grace.kim@example.com",
       location: "Boston, MA",
-      avatarUrl: "https://i.pravatar.cc/150?u=grace",
+      image: "https://i.pravatar.cc/150?u=grace",
       tenantId: globexTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Henry Davis",
       email: "henry.davis@example.com",
       location: "Denver, CO",
-      avatarUrl: "https://i.pravatar.cc/150?u=henry",
+      image: "https://i.pravatar.cc/150?u=henry",
       tenantId: globexTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Iris Chen",
       email: "iris.chen@example.com",
       location: "Los Angeles, CA",
-      avatarUrl: null,
+      image: null,
       tenantId: globexTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Jack Wilson",
       email: "jack.wilson@example.com",
       location: "Portland, OR",
-      avatarUrl: "https://i.pravatar.cc/150?u=jack",
+      image: "https://i.pravatar.cc/150?u=jack",
       tenantId: globexTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Liam Patel",
       email: "liam.patel@example.com",
       location: "Dallas, TX",
-      avatarUrl: "https://i.pravatar.cc/150?u=liam",
+      image: "https://i.pravatar.cc/150?u=liam",
       tenantId: initechTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Mia Thompson",
       email: "mia.thompson@example.com",
       location: "Atlanta, GA",
-      avatarUrl: "https://i.pravatar.cc/150?u=mia",
+      image: "https://i.pravatar.cc/150?u=mia",
       tenantId: initechTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Noah Garcia",
       email: "noah.garcia@example.com",
       location: "Phoenix, AZ",
-      avatarUrl: null,
+      image: null,
       tenantId: initechTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Olivia Nguyen",
       email: "olivia.nguyen@example.com",
       location: "Minneapolis, MN",
-      avatarUrl: "https://i.pravatar.cc/150?u=olivia",
+      image: "https://i.pravatar.cc/150?u=olivia",
       tenantId: initechTenant.id,
-      passwordHash,
     },
     {
+      id: crypto.randomUUID(),
       name: "Peter Müller",
       email: "peter.muller@example.com",
       location: "Nashville, TN",
-      avatarUrl: null,
+      image: null,
       tenantId: initechTenant.id,
-      passwordHash,
     },
   ];
 
@@ -263,6 +263,22 @@ async function seed() {
       : await db.select().from(users).where(eq(users.isDeleted, false));
   const userIds = allUsers.map((u) => u.id);
   console.log(`Using ${userIds.length} user IDs for reminders.`);
+
+  // --- Accounts (BetterAuth credential provider) ---
+  // Deterministic id per (userId, providerId) so reruns are idempotent: same row, onConflictDoNothing skips.
+  console.log("Seeding accounts for email/password auth...");
+  for (const user of allUsers) {
+    await db
+      .insert(accounts)
+      .values({
+        id: `credential-${user.id}`,
+        userId: user.id,
+        accountId: user.id,
+        providerId: "credential",
+        password: passwordHash,
+      })
+      .onConflictDoNothing();
+  }
 
   // --- Tenant Memberships ---
   console.log("Seeding tenant memberships...");

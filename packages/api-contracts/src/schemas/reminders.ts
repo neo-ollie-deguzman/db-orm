@@ -32,7 +32,7 @@ export const UpdateReminderBodySchema = z.object({
 /** Single reminder in API responses (dates as ISO strings). */
 export const ReminderResponseSchema = z.object({
   id: z.number(),
-  userId: z.number(),
+  userId: z.string(),
   note: z.string(),
   status: z.enum(reminderStatuses),
   reminderDate: z.string(),

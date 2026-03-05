@@ -1,31 +1,9 @@
-import bcrypt from "bcryptjs";
 import { and, eq, ne } from "drizzle-orm";
 import { users, withTenant } from "@repo/db";
 import type { CreateUserInput, UpdateUserInput } from "./types";
 import { CoreConflictError, CoreNotFoundError } from "./errors";
 
 export type UserRow = typeof users.$inferSelect;
-
-/**
- * Authenticate by email and password within a tenant. Returns user row or null.
- */
-export async function authenticate(
-  tenantId: string,
-  email: string,
-  password: string,
-): Promise<UserRow | null> {
-  const [user] = await withTenant(tenantId, (tx) =>
-    tx
-      .select()
-      .from(users)
-      .where(and(eq(users.email, email), eq(users.isDeleted, false)))
-      .limit(1),
-  );
-
-  if (!user) return null;
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  return valid ? user : null;
-}
 
 /**
  * List all non-deleted users for the tenant.
@@ -41,7 +19,7 @@ export async function listUsers(tenantId: string): Promise<UserRow[]> {
  */
 export async function getUser(
   tenantId: string,
-  userId: number,
+  userId: string,
 ): Promise<UserRow | null> {
   const [row] = await withTenant(tenantId, (tx) =>
     tx
@@ -54,14 +32,15 @@ export async function getUser(
 }
 
 /**
- * Create a user. Throws CoreConflictError if email already exists in the tenant.
+ * Create a user record in the tenant.
+ * Note: BetterAuth handles sign-up and password management via the accounts table.
+ * This function is for admin-level user creation within the app.
  */
 export async function createUser(
   tenantId: string,
   input: CreateUserInput,
-  passwordHash: string,
 ): Promise<UserRow> {
-  const { name, email, avatarUrl, location } = input;
+  const { name, email, image, location } = input;
 
   const result = await withTenant(tenantId, async (tx) => {
     const [duplicate] = await tx
@@ -75,11 +54,11 @@ export async function createUser(
     const [created] = await tx
       .insert(users)
       .values({
+        id: crypto.randomUUID(),
         tenantId,
         name,
         email,
-        passwordHash,
-        avatarUrl: avatarUrl ?? null,
+        image: image ?? null,
         location: location ?? null,
       })
       .returning();
@@ -99,7 +78,7 @@ export async function createUser(
  */
 export async function updateUser(
   tenantId: string,
-  id: number,
+  id: string,
   input: UpdateUserInput,
 ): Promise<UserRow> {
   const result = await withTenant(tenantId, async (tx) => {
@@ -147,7 +126,7 @@ export async function updateUser(
 /**
  * Soft-delete a user. Throws CoreNotFoundError if not found.
  */
-export async function deleteUser(tenantId: string, id: number): Promise<void> {
+export async function deleteUser(tenantId: string, id: string): Promise<void> {
   const result = await withTenant(tenantId, async (tx) => {
     const [user] = await tx
       .select({ id: users.id })

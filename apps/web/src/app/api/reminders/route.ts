@@ -14,7 +14,7 @@ export const GET = withAuth(async ({ tenantId }) => {
 
   const body: RemindersListResponse = {
     reminders: remindersList.map((r) =>
-      serializeReminder(r, { name: r.userName, avatarUrl: r.userAvatarUrl }),
+      serializeReminder(r, { name: r.userName, avatarUrl: r.userImage }),
     ),
     count: remindersList.length,
   };
@@ -42,7 +42,7 @@ export const POST = withAuth(
 
     const body: ReminderResponse = serializeReminder(created, {
       name: created.userName,
-      avatarUrl: created.userAvatarUrl,
+      avatarUrl: created.userImage,
     });
     return NextResponse.json(body, { status: 201 });
   },

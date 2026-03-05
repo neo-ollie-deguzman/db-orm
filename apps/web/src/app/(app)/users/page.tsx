@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getUsers } from "./actions";
 import { CreateUserDialog } from "./create-user-dialog";
 import { DeleteUserButton } from "./delete-user-button";
@@ -75,10 +76,13 @@ export default async function UsersPage() {
                   </td>
                   <td className="px-6 py-3 font-medium">
                     <div className="flex items-center gap-3">
-                      {user.avatarUrl ? (
-                        <img
-                          src={user.avatarUrl}
+                      {user.image ? (
+                        <Image
+                          src={user.image}
                           alt={user.name}
+                          width={32}
+                          height={32}
+                          unoptimized
                           className="h-8 w-8 shrink-0 rounded-full object-cover"
                         />
                       ) : (
@@ -125,7 +129,7 @@ export default async function UsersPage() {
                         userId={user.id}
                         currentName={user.name}
                         currentEmail={user.email}
-                        currentAvatarUrl={user.avatarUrl}
+                        currentImage={user.image}
                         currentLocation={user.location}
                       />
                       <DeleteUserButton userId={user.id} userName={user.name} />

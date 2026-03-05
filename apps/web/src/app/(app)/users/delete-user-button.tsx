@@ -7,7 +7,7 @@ export function DeleteUserButton({
   userId,
   userName,
 }: {
-  userId: number;
+  userId: string;
   userName: string;
 }) {
   const [isPending, startTransition] = useTransition();

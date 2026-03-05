@@ -6,9 +6,7 @@ import {
   UpdateUserBodySchema,
 } from "@repo/api-contracts";
 import { revalidatePath } from "next/cache";
-import { hashPassword } from "@/lib/auth";
 import { getTenantId } from "@/lib/tenant";
-import crypto from "node:crypto";
 
 export async function getUsers() {
   const tenantId = await getTenantId();
@@ -35,34 +33,36 @@ export async function createUser(formData: FormData) {
 
   try {
     const tenantId = await getTenantId();
-    const temporaryPassword = crypto.randomBytes(16).toString("hex");
-    const passwordHash = await hashPassword(temporaryPassword);
-    await core.createUser(
-      tenantId,
-      { name, email, avatarUrl: avatarUrl ?? null, location: location ?? null },
-      passwordHash,
-    );
+    await core.createUser(tenantId, {
+      name,
+      email,
+      image: avatarUrl,
+      location,
+    });
   } catch (e) {
     if (e instanceof core.CoreConflictError) {
       return { error: "A user with that email already exists." };
     }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return { error: message };
+    console.error("[users/actions:createUser]", e);
+    return { error: "Internal server error." };
   }
 
   revalidatePath("/users");
   return { success: true };
 }
 
-export async function updateUser(id: number, formData: FormData) {
-  const raw: Record<string, unknown> = {};
-  for (const key of ["name", "email", "avatarUrl", "location"] as const) {
-    if (formData.has(key)) {
-      raw[key] = formData.get(key) || undefined;
-    }
-  }
+export async function updateUser(id: string, formData: FormData) {
+  const raw = {
+    name: formData.get("name") ?? undefined,
+    email: formData.get("email") ?? undefined,
+    avatarUrl: formData.get("avatarUrl") || undefined,
+    location: formData.get("location") || undefined,
+  };
 
-  if (Object.keys(raw).length === 0) {
+  const defined = Object.fromEntries(
+    Object.entries(raw).filter(([, v]) => v !== undefined && v !== ""),
+  );
+  if (Object.keys(defined).length === 0) {
     return { error: "No fields to update." };
   }
 
@@ -74,9 +74,16 @@ export async function updateUser(id: number, formData: FormData) {
     return { error: message };
   }
 
+  const { name, email, avatarUrl, location } = parsed.data;
+
   try {
     const tenantId = await getTenantId();
-    await core.updateUser(tenantId, id, parsed.data);
+    await core.updateUser(tenantId, id, {
+      name,
+      email,
+      image: avatarUrl ?? null,
+      location: location ?? null,
+    });
   } catch (e) {
     if (e instanceof core.CoreNotFoundError) {
       return { error: "User not found." };
@@ -84,15 +91,15 @@ export async function updateUser(id: number, formData: FormData) {
     if (e instanceof core.CoreConflictError) {
       return { error: "A user with that email already exists." };
     }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return { error: message };
+    console.error("[users/actions:updateUser]", e);
+    return { error: "Internal server error." };
   }
 
   revalidatePath("/users");
   return { success: true };
 }
 
-export async function deleteUser(id: number) {
+export async function deleteUser(id: string) {
   try {
     const tenantId = await getTenantId();
     await core.deleteUser(tenantId, id);
@@ -100,8 +107,8 @@ export async function deleteUser(id: number) {
     if (e instanceof core.CoreNotFoundError) {
       return { error: "User not found." };
     }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return { error: message };
+    console.error("[users/actions:deleteUser]", e);
+    return { error: "Internal server error." };
   }
 
   revalidatePath("/users");

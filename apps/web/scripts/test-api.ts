@@ -1,7 +1,18 @@
-const BASE = "http://localhost:3000/api";
+/**
+ * API integration test. Requires dev server and seeded DB.
+ * Run: pnpm test:api (from repo root).
+ * Uses tenant subdomain (acme.localhost:3000) so sign-in is tenant-scoped; Alice is in acme.
+ */
+const TENANT_SLUG = "acme";
+const BASE_ORIGIN = `http://${TENANT_SLUG}.localhost:3000`;
+const BASE = `${BASE_ORIGIN}/api`;
+const TENANT_HEADER = { "X-Tenant-Slug": TENANT_SLUG };
+const SEED_EMAIL = "alice.johnson@example.com";
+const SEED_PASSWORD = "passworD123";
 
 let passed = 0;
 let failed = 0;
+let cookieHeader: string | null = null;
 
 function log(step: string, ok: boolean, detail?: string) {
   const icon = ok ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m";
@@ -9,49 +20,119 @@ function log(step: string, ok: boolean, detail?: string) {
   ok ? passed++ : failed++;
 }
 
-async function json<T = any>(res: Response): Promise<T | null> {
+async function json<T = unknown>(res: Response): Promise<T | null> {
   if (res.status === 204) return null;
   try {
-    return await res.json();
+    return (await res.json()) as T;
   } catch {
     return null;
   }
 }
 
+function defaultHeaders(includeCookie: boolean): HeadersInit {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...TENANT_HEADER,
+  };
+  if (includeCookie && cookieHeader) headers["Cookie"] = cookieHeader;
+  return headers;
+}
+
 async function run() {
   console.log("\n  API Test Suite\n  ==============\n");
+
+  // ── 0. Sign in (BetterAuth) ───────────────────────────────────────
+  const signInRes = await fetch(`${BASE_ORIGIN}/api/auth/sign-in/email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Host: `${TENANT_SLUG}.localhost:3000`,
+      Origin: BASE_ORIGIN,
+      Referer: `${BASE_ORIGIN}/login`,
+      ...TENANT_HEADER,
+    },
+    body: JSON.stringify({
+      email: SEED_EMAIL,
+      password: SEED_PASSWORD,
+    }),
+    redirect: "manual",
+  });
+
+  const setCookie = signInRes.headers.get("set-cookie");
+  if (setCookie) {
+    cookieHeader = (
+      typeof signInRes.headers.getSetCookie === "function"
+        ? signInRes.headers.getSetCookie()
+        : [setCookie]
+    )
+      .map((c) => c.split(";")[0].trim())
+      .join("; ");
+  }
+
+  log(
+    "Sign in (BetterAuth)",
+    signInRes.ok || signInRes.status === 302,
+    `status=${signInRes.status} cookie=${cookieHeader ? "set" : "missing"}`,
+  );
+
+  if (!cookieHeader) {
+    const errBody = await signInRes.text();
+    try {
+      const parsed = JSON.parse(errBody);
+      if (parsed?.message) console.log("\n  Server message:", parsed.message);
+    } catch {
+      if (errBody) console.log("\n  Response:", errBody.slice(0, 200));
+    }
+    console.log(
+      "\n  Cannot continue without session. Ensure dev server is running (pnpm dev) and DB is seeded (pnpm db:seed).",
+    );
+    process.exit(1);
+  }
 
   // ── 1. Create a user ──────────────────────────────────────────────
   const createRes = await fetch(`${BASE}/users`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: defaultHeaders(true),
     body: JSON.stringify({
       name: "Test User",
       email: `test-${Date.now()}@example.com`,
       location: "Test City, TC",
     }),
   });
-  const created = await json(createRes);
+  type CreateUserResponse = { id?: string; updatedAt?: string };
+  const created = await json<CreateUserResponse>(createRes);
   log(
     "Create user",
     createRes.status === 201 && !!created?.id,
     `status=${createRes.status} id=${created?.id}`,
   );
-  const userId: number | undefined = created?.id;
+  if (!created?.id) {
+    console.error(
+      "\n  Create user did not return an id; cannot continue user tests.",
+    );
+    process.exit(1);
+  }
+  const userId: string = created.id;
 
   // ── 2. List users ─────────────────────────────────────────────────
-  const listRes = await fetch(`${BASE}/users`);
-  const list = await json(listRes);
-  const foundInList = list?.users?.some((u: any) => u.id === userId);
+  const listRes = await fetch(`${BASE}/users`, {
+    headers: defaultHeaders(true),
+  });
+  const list = await json<{ users?: { id: string }[]; count?: number }>(
+    listRes,
+  );
+  const foundInList = list?.users?.some((u) => u.id === userId);
   log(
     "List users",
-    listRes.status === 200 && foundInList,
-    `status=${listRes.status} count=${list?.count} newUserInList=${foundInList}`,
+    listRes.status === 200 && !!foundInList,
+    `status=${listRes.status} count=${list?.count} newUserInList=${!!foundInList}`,
   );
 
   // ── 3. Get user details ───────────────────────────────────────────
-  const getRes = await fetch(`${BASE}/users/${userId}`);
-  const detail = await json(getRes);
+  const getRes = await fetch(`${BASE}/users/${userId}`, {
+    headers: defaultHeaders(true),
+  });
+  const detail = await json<{ id?: string; name?: string }>(getRes);
   log(
     "Get user details",
     getRes.status === 200 && detail?.id === userId,
@@ -61,13 +142,13 @@ async function run() {
   // ── 4. Update user ────────────────────────────────────────────────
   const updateRes = await fetch(`${BASE}/users/${userId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: defaultHeaders(true),
     body: JSON.stringify({
       name: "Updated User",
       location: "Updated City, UC",
     }),
   });
-  const updated = await json(updateRes);
+  const updated = await json<{ name?: string; updatedAt?: string }>(updateRes);
   const nameUpdated = updated?.name === "Updated User";
   log(
     "Update user",
@@ -76,16 +157,22 @@ async function run() {
   );
 
   // ── 5. Verify updatedAt changed ───────────────────────────────────
-  const updatedAtChanged = updated?.updatedAt !== created?.updatedAt;
+  const createdUpdatedAt = created?.updatedAt;
+  const updatedUpdatedAt = updated?.updatedAt;
+  const updatedAtChanged =
+    typeof createdUpdatedAt === "string" &&
+    typeof updatedUpdatedAt === "string" &&
+    createdUpdatedAt !== updatedUpdatedAt;
   log(
     "Verify updatedAt changed",
     updatedAtChanged,
-    `before=${created?.updatedAt} after=${updated?.updatedAt}`,
+    `before=${createdUpdatedAt} after=${updatedUpdatedAt}`,
   );
 
   // ── 6. Soft-delete user ───────────────────────────────────────────
   const deleteRes = await fetch(`${BASE}/users/${userId}`, {
     method: "DELETE",
+    headers: defaultHeaders(true),
   });
   log(
     "Soft-delete user",
@@ -94,8 +181,10 @@ async function run() {
   );
 
   // ── 7. Verify deleted user returns 404 ────────────────────────────
-  const getDeletedRes = await fetch(`${BASE}/users/${userId}`);
-  const getDeletedBody = await json(getDeletedRes);
+  const getDeletedRes = await fetch(`${BASE}/users/${userId}`, {
+    headers: defaultHeaders(true),
+  });
+  const getDeletedBody = await json<{ error?: string }>(getDeletedRes);
   log(
     "Deleted user returns 404",
     getDeletedRes.status === 404,
@@ -103,25 +192,145 @@ async function run() {
   );
 
   // ── 8. Verify deleted user not in list ────────────────────────────
-  const listAfterRes = await fetch(`${BASE}/users`);
-  const listAfter = await json(listAfterRes);
-  const stillInList = listAfter?.users?.some((u: any) => u.id === userId);
+  const listAfterRes = await fetch(`${BASE}/users`, {
+    headers: defaultHeaders(true),
+  });
+  const listAfter = await json<{ users?: { id: string }[]; count?: number }>(
+    listAfterRes,
+  );
+  const stillInList = listAfter?.users?.some((u) => u.id === userId);
   log(
     "Deleted user excluded from list",
     listAfterRes.status === 200 && !stillInList,
-    `count=${listAfter?.count} foundDeletedUser=${stillInList}`,
+    `count=${listAfter?.count} foundDeletedUser=${!!stillInList}`,
   );
 
-  // ── Validation error test ─────────────────────────────────────────
+  // ── Validation error test (users) ──────────────────────────────────
   const badRes = await fetch(`${BASE}/users`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: defaultHeaders(true),
     body: JSON.stringify({ name: "", email: "not-an-email" }),
   });
   log(
-    "Validation rejects bad input",
+    "Validation rejects bad user input",
     badRes.status === 422,
     `status=${badRes.status}`,
+  );
+
+  // ── Reminders: Create ─────────────────────────────────────────────
+  const reminderDate = new Date(Date.now() + 86400000).toISOString(); // tomorrow
+  const createReminderRes = await fetch(`${BASE}/reminders`, {
+    method: "POST",
+    headers: defaultHeaders(true),
+    body: JSON.stringify({
+      note: "API test reminder",
+      reminderDate,
+      status: "pending",
+    }),
+  });
+  const createdReminder = await json<{ id?: number; note?: string }>(
+    createReminderRes,
+  );
+  log(
+    "Create reminder",
+    createReminderRes.status === 201 && typeof createdReminder?.id === "number",
+    `status=${createReminderRes.status} id=${createdReminder?.id}`,
+  );
+  if (typeof createdReminder?.id !== "number") {
+    console.error(
+      "\n  Create reminder did not return an id; cannot continue reminder tests.",
+    );
+    process.exit(1);
+  }
+  const reminderId: number = createdReminder.id;
+
+  // ── Reminders: List ───────────────────────────────────────────────
+  const listRemindersRes = await fetch(`${BASE}/reminders`, {
+    headers: defaultHeaders(true),
+  });
+  const listReminders = await json<{
+    reminders?: { id: number }[];
+    count?: number;
+  }>(listRemindersRes);
+  const foundInRemindersList = listReminders?.reminders?.some(
+    (r) => r.id === reminderId,
+  );
+  log(
+    "List reminders",
+    listRemindersRes.status === 200 && !!foundInRemindersList,
+    `status=${listRemindersRes.status} count=${listReminders?.count} newReminderInList=${!!foundInRemindersList}`,
+  );
+
+  // ── Reminders: Get by id ──────────────────────────────────────────
+  const getReminderRes = await fetch(`${BASE}/reminders/${reminderId}`, {
+    headers: defaultHeaders(true),
+  });
+  const reminderDetail = await json<{ id?: number; note?: string }>(
+    getReminderRes,
+  );
+  log(
+    "Get reminder details",
+    getReminderRes.status === 200 && reminderDetail?.id === reminderId,
+    `status=${getReminderRes.status} note=${reminderDetail?.note}`,
+  );
+
+  // ── Reminders: Update ──────────────────────────────────────────────
+  const updateReminderRes = await fetch(`${BASE}/reminders/${reminderId}`, {
+    method: "PATCH",
+    headers: defaultHeaders(true),
+    body: JSON.stringify({
+      note: "Updated API test reminder",
+      status: "completed",
+    }),
+  });
+  const updatedReminder = await json<{ note?: string; status?: string }>(
+    updateReminderRes,
+  );
+  const reminderNoteUpdated =
+    updatedReminder?.note === "Updated API test reminder";
+  log(
+    "Update reminder",
+    updateReminderRes.status === 200 && reminderNoteUpdated,
+    `status=${updateReminderRes.status} note=${updatedReminder?.note}`,
+  );
+
+  // ── Reminders: Delete ──────────────────────────────────────────────
+  const deleteReminderRes = await fetch(`${BASE}/reminders/${reminderId}`, {
+    method: "DELETE",
+    headers: defaultHeaders(true),
+  });
+  log(
+    "Delete reminder",
+    deleteReminderRes.status === 204,
+    `status=${deleteReminderRes.status}`,
+  );
+
+  // ── Reminders: Deleted returns 404 ─────────────────────────────────
+  const getDeletedReminderRes = await fetch(`${BASE}/reminders/${reminderId}`, {
+    headers: defaultHeaders(true),
+  });
+  const getDeletedReminderBody = await json<{ error?: string }>(
+    getDeletedReminderRes,
+  );
+  log(
+    "Deleted reminder returns 404",
+    getDeletedReminderRes.status === 404,
+    `status=${getDeletedReminderRes.status} error=${getDeletedReminderBody?.error}`,
+  );
+
+  // ── Reminders: Validation error ─────────────────────────────────────
+  const badReminderRes = await fetch(`${BASE}/reminders`, {
+    method: "POST",
+    headers: defaultHeaders(true),
+    body: JSON.stringify({
+      note: "",
+      reminderDate: "not-a-datetime",
+    }),
+  });
+  log(
+    "Validation rejects bad reminder input",
+    badReminderRes.status === 422,
+    `status=${badReminderRes.status}`,
   );
 
   // ── Summary ───────────────────────────────────────────────────────
