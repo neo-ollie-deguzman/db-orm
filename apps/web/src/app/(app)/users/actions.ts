@@ -55,12 +55,16 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUser(id: number, formData: FormData) {
-  const raw = {
-    name: formData.get("name") ?? "",
-    email: formData.get("email") ?? "",
-    avatarUrl: formData.get("avatarUrl") || undefined,
-    location: formData.get("location") || undefined,
-  };
+  const raw: Record<string, unknown> = {};
+  for (const key of ["name", "email", "avatarUrl", "location"] as const) {
+    if (formData.has(key)) {
+      raw[key] = formData.get(key) || undefined;
+    }
+  }
+
+  if (Object.keys(raw).length === 0) {
+    return { error: "No fields to update." };
+  }
 
   const parsed = UpdateUserBodySchema.safeParse(raw);
   if (!parsed.success) {
@@ -70,16 +74,9 @@ export async function updateUser(id: number, formData: FormData) {
     return { error: message };
   }
 
-  const { name, email, avatarUrl, location } = parsed.data;
-
   try {
     const tenantId = await getTenantId();
-    await core.updateUser(tenantId, id, {
-      name,
-      email,
-      avatarUrl: avatarUrl ?? null,
-      location: location ?? null,
-    });
+    await core.updateUser(tenantId, id, parsed.data);
   } catch (e) {
     if (e instanceof core.CoreNotFoundError) {
       return { error: "User not found." };
