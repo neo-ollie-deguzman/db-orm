@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
@@ -154,9 +155,12 @@ function UserAvatar({
 
   if (avatarUrl) {
     return (
-      <img
+      <Image
         src={avatarUrl}
         alt={name}
+        width={size === "lg" ? 40 : 28}
+        height={size === "lg" ? 40 : 28}
+        unoptimized
         className={`${px} shrink-0 rounded-full object-cover`}
       />
     );
@@ -307,7 +311,7 @@ export function EditReminderDialog({
         <div className="flex items-center gap-3">
           <UserAvatar
             name={reminder.userName}
-            avatarUrl={reminder.userImage}
+            avatarUrl={reminder.userAvatarUrl}
             size="lg"
           />
           <div>

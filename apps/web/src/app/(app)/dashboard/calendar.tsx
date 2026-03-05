@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { Reminder, ReminderStatus } from "./mock-data";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -184,7 +185,10 @@ export function Calendar({
                       className={`flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight transition-colors sm:px-1.5 sm:text-xs ${colors}`}
                       title={`${r.userName}: ${r.note}`}
                     >
-                      <UserAvatar name={r.userName} avatarUrl={r.userImage} />
+                      <UserAvatar
+                        name={r.userName}
+                        avatarUrl={r.userAvatarUrl}
+                      />
                       <span className="hidden truncate sm:inline">
                         {r.note}
                       </span>
@@ -220,9 +224,12 @@ function UserAvatar({
 }) {
   if (avatarUrl) {
     return (
-      <img
+      <Image
         src={avatarUrl}
         alt={name}
+        width={18}
+        height={18}
+        unoptimized
         className="h-4 w-4 shrink-0 rounded-full object-cover sm:h-[18px] sm:w-[18px]"
       />
     );
