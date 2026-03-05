@@ -1,9 +1,14 @@
 "use server";
 
 import * as core from "@repo/core";
+import {
+  CreateUserBodySchema,
+  UpdateUserBodySchema,
+} from "@repo/api-contracts";
 import { revalidatePath } from "next/cache";
 import { hashPassword } from "@/lib/auth";
 import { getTenantId } from "@/lib/tenant";
+import crypto from "node:crypto";
 
 export async function getUsers() {
   const tenantId = await getTenantId();
@@ -11,21 +16,30 @@ export async function getUsers() {
 }
 
 export async function createUser(formData: FormData) {
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const avatarUrl = (formData.get("avatarUrl") as string) || null;
-  const location = (formData.get("location") as string) || null;
+  const raw = {
+    name: formData.get("name") ?? "",
+    email: formData.get("email") ?? "",
+    avatarUrl: formData.get("avatarUrl") || undefined,
+    location: formData.get("location") || undefined,
+  };
 
-  if (!name || !email) {
-    return { error: "Name and email are required." };
+  const parsed = CreateUserBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const message =
+      Object.values(fieldErrors).flat().join(". ") || "Validation failed";
+    return { error: message };
   }
+
+  const { name, email, avatarUrl, location } = parsed.data;
 
   try {
     const tenantId = await getTenantId();
-    const passwordHash = await hashPassword("passworD123");
+    const temporaryPassword = crypto.randomBytes(16).toString("hex");
+    const passwordHash = await hashPassword(temporaryPassword);
     await core.createUser(
       tenantId,
-      { name, email, avatarUrl, location },
+      { name, email, avatarUrl: avatarUrl ?? null, location: location ?? null },
       passwordHash,
     );
   } catch (e) {
@@ -41,18 +55,31 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUser(id: number, formData: FormData) {
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const avatarUrl = (formData.get("avatarUrl") as string) || null;
-  const location = (formData.get("location") as string) || null;
+  const raw = {
+    name: formData.get("name") ?? "",
+    email: formData.get("email") ?? "",
+    avatarUrl: formData.get("avatarUrl") || undefined,
+    location: formData.get("location") || undefined,
+  };
 
-  if (!name || !email) {
-    return { error: "Name and email are required." };
+  const parsed = UpdateUserBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const message =
+      Object.values(fieldErrors).flat().join(". ") || "Validation failed";
+    return { error: message };
   }
+
+  const { name, email, avatarUrl, location } = parsed.data;
 
   try {
     const tenantId = await getTenantId();
-    await core.updateUser(tenantId, id, { name, email, avatarUrl, location });
+    await core.updateUser(tenantId, id, {
+      name,
+      email,
+      avatarUrl: avatarUrl ?? null,
+      location: location ?? null,
+    });
   } catch (e) {
     if (e instanceof core.CoreNotFoundError) {
       return { error: "User not found." };
