@@ -33,10 +33,8 @@ export function conflict(message: string) {
 }
 
 export function internalError(error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Internal server error";
   console.error("[API Error]", error);
-  return errorResponse(500, message);
+  return errorResponse(500, "Internal server error");
 }
 
 function formatZodErrors(error: ZodError) {

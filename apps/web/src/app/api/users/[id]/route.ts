@@ -6,16 +6,14 @@ import {
   CoreNotFoundError,
   CoreConflictError,
 } from "@repo/core";
-import { getCurrentUser } from "@/lib/auth";
-import { getTenantId } from "@/lib/tenant";
 import {
-  unauthorized,
   notFound,
   validationError,
   conflict,
-  internalError,
   errorResponse,
 } from "@/lib/errors";
+import { parseId } from "@/lib/parse-id";
+import { withAuth } from "@/lib/with-auth";
 import { UpdateUserBodySchema, type UserResponse } from "@repo/api-contracts";
 import { serializeUser } from "@/lib/validations/users";
 
@@ -34,16 +32,11 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
     const body: UserResponse = serializeUser(user);
     return NextResponse.json(body);
-  } catch (error) {
-    return internalError(error);
-  }
-}
+  },
+);
 
-export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return unauthorized();
-
+export const PATCH = withAuth(
+  async ({ tenantId }, request: NextRequest, { params }: RouteContext) => {
     const { id } = await params;
     const json = await request.json();
     const parsed = UpdateUserBodySchema.safeParse(json);
@@ -56,8 +49,6 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (Object.keys(updates).length === 0) {
       return errorResponse(400, "No fields to update");
     }
-
-    const tenantId = await getTenantId();
 
     try {
       const { avatarUrl: apiAvatarUrl, ...rest } = updates;
@@ -74,16 +65,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       }
       throw e;
     }
-  } catch (error) {
-    return internalError(error);
-  }
-}
+  },
+);
 
-export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return unauthorized();
-
+export const DELETE = withAuth(
+  async ({ tenantId }, _request: NextRequest, { params }: RouteContext) => {
     const { id } = await params;
     const tenantId = await getTenantId();
 
@@ -94,7 +80,5 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
       if (e instanceof CoreNotFoundError) return notFound("User");
       throw e;
     }
-  } catch (error) {
-    return internalError(error);
-  }
-}
+  },
+);
