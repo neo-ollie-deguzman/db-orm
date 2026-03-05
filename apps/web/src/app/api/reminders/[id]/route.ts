@@ -5,15 +5,9 @@ import {
   deleteReminder,
   CoreNotFoundError,
 } from "@repo/core";
-import { getCurrentUser } from "@/lib/auth";
-import { getTenantId } from "@/lib/tenant";
-import {
-  unauthorized,
-  notFound,
-  validationError,
-  errorResponse,
-  internalError,
-} from "@/lib/errors";
+import { notFound, validationError, errorResponse } from "@/lib/errors";
+import { parseId } from "@/lib/parse-id";
+import { withAuth } from "@/lib/with-auth";
 import {
   UpdateReminderBodySchema,
   type ReminderResponse,
@@ -22,21 +16,11 @@ import { serializeReminder } from "@/lib/validations/reminders";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-function parseId(id: string): number | null {
-  const parsed = Number(id);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-export async function GET(_request: NextRequest, { params }: RouteContext) {
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return unauthorized();
-
+export const GET = withAuth(
+  async ({ tenantId }, _request: NextRequest, { params }: RouteContext) => {
     const { id } = await params;
     const reminderId = parseId(id);
     if (!reminderId) return errorResponse(400, "Invalid reminder ID");
-
-    const tenantId = await getTenantId();
 
     try {
       const row = await getReminder(tenantId, reminderId);
@@ -49,16 +33,11 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       if (e instanceof CoreNotFoundError) return notFound("Reminder");
       throw e;
     }
-  } catch (error) {
-    return internalError(error);
-  }
-}
+  },
+);
 
-export async function PATCH(request: NextRequest, { params }: RouteContext) {
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return unauthorized();
-
+export const PATCH = withAuth(
+  async ({ tenantId }, request: NextRequest, { params }: RouteContext) => {
     const { id } = await params;
     const reminderId = parseId(id);
     if (!reminderId) return errorResponse(400, "Invalid reminder ID");
@@ -74,8 +53,6 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (Object.keys(updates).length === 0) {
       return errorResponse(400, "No fields to update");
     }
-
-    const tenantId = await getTenantId();
 
     try {
       const updated = await updateReminder(tenantId, reminderId, {
@@ -93,21 +70,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       if (e instanceof CoreNotFoundError) return notFound("Reminder");
       throw e;
     }
-  } catch (error) {
-    return internalError(error);
-  }
-}
+  },
+);
 
-export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return unauthorized();
-
+export const DELETE = withAuth(
+  async ({ tenantId }, _request: NextRequest, { params }: RouteContext) => {
     const { id } = await params;
     const reminderId = parseId(id);
     if (!reminderId) return errorResponse(400, "Invalid reminder ID");
-
-    const tenantId = await getTenantId();
 
     try {
       await deleteReminder(tenantId, reminderId);
@@ -116,7 +86,5 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
       if (e instanceof CoreNotFoundError) return notFound("Reminder");
       throw e;
     }
-  } catch (error) {
-    return internalError(error);
-  }
-}
+  },
+);
