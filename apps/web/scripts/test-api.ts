@@ -99,13 +99,20 @@ async function run() {
       location: "Test City, TC",
     }),
   });
-  const created = await json<{ id?: string }>(createRes);
+  type CreateUserResponse = { id?: string; updatedAt?: string };
+  const created = await json<CreateUserResponse>(createRes);
   log(
     "Create user",
     createRes.status === 201 && !!created?.id,
     `status=${createRes.status} id=${created?.id}`,
   );
-  const userId: string | undefined = created?.id;
+  if (!created?.id) {
+    console.error(
+      "\n  Create user did not return an id; cannot continue user tests.",
+    );
+    process.exit(1);
+  }
+  const userId: string = created.id;
 
   // ── 2. List users ─────────────────────────────────────────────────
   const listRes = await fetch(`${BASE}/users`, {
@@ -150,14 +157,16 @@ async function run() {
   );
 
   // ── 5. Verify updatedAt changed ───────────────────────────────────
+  const createdUpdatedAt = created?.updatedAt;
+  const updatedUpdatedAt = updated?.updatedAt;
   const updatedAtChanged =
-    !!created &&
-    !!updated &&
-    updated?.updatedAt !== (created as { updatedAt?: string })?.updatedAt;
+    typeof createdUpdatedAt === "string" &&
+    typeof updatedUpdatedAt === "string" &&
+    createdUpdatedAt !== updatedUpdatedAt;
   log(
     "Verify updatedAt changed",
     updatedAtChanged,
-    `before=${(created as { updatedAt?: string })?.updatedAt} after=${updated?.updatedAt}`,
+    `before=${createdUpdatedAt} after=${updatedUpdatedAt}`,
   );
 
   // ── 6. Soft-delete user ───────────────────────────────────────────
@@ -227,7 +236,13 @@ async function run() {
     createReminderRes.status === 201 && typeof createdReminder?.id === "number",
     `status=${createReminderRes.status} id=${createdReminder?.id}`,
   );
-  const reminderId: number | undefined = createdReminder?.id;
+  if (typeof createdReminder?.id !== "number") {
+    console.error(
+      "\n  Create reminder did not return an id; cannot continue reminder tests.",
+    );
+    process.exit(1);
+  }
+  const reminderId: number = createdReminder.id;
 
   // ── Reminders: List ───────────────────────────────────────────────
   const listRemindersRes = await fetch(`${BASE}/reminders`, {

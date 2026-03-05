@@ -54,7 +54,7 @@ function deriveUniqueUsers(reminders: Reminder[]): UniqueUser[] {
       map.set(r.userId, {
         id: r.userId,
         name: r.userName,
-        avatarUrl: r.userAvatarUrl,
+        avatarUrl: r.userImage,
       });
     }
   }

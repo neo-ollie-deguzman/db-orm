@@ -28,6 +28,8 @@ async function run() {
   const client = await pool.connect();
 
   try {
+    await client.query("BEGIN");
+
     const statements = sql
       .split(/--> statement-breakpoint\n?/)
       .map((s) => s.trim())
@@ -39,8 +41,15 @@ async function run() {
       console.log(`Running statement ${i + 1}/${statements.length}...`);
       await client.query(stmt);
     }
+
+    await client.query("COMMIT");
     console.log("Migration 0002_betterauth_schema applied successfully.");
   } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackErr) {
+      console.error("Rollback failed:", rollbackErr);
+    }
     console.error("Migration failed:", err);
     process.exit(1);
   } finally {

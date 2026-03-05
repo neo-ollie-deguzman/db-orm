@@ -15,7 +15,7 @@ function rowToReminderWithUser(
   return {
     ...reminder,
     userName: userName ?? "Unknown",
-    userAvatarUrl: userImage ?? null,
+    userImage: userImage ?? null,
   };
 }
 

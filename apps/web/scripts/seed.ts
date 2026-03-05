@@ -265,12 +265,13 @@ async function seed() {
   console.log(`Using ${userIds.length} user IDs for reminders.`);
 
   // --- Accounts (BetterAuth credential provider) ---
+  // Deterministic id per (userId, providerId) so reruns are idempotent: same row, onConflictDoNothing skips.
   console.log("Seeding accounts for email/password auth...");
   for (const user of allUsers) {
     await db
       .insert(accounts)
       .values({
-        id: crypto.randomUUID(),
+        id: `credential-${user.id}`,
         userId: user.id,
         accountId: user.id,
         providerId: "credential",

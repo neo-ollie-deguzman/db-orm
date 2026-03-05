@@ -18,11 +18,11 @@
     "@better-auth/drizzle-adapter": "^1.5.3",
     "@repo/db": "workspace:*",
     "better-auth": "^1.5.3",
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.44.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "^3.0.0",
     "typescript": "^5.7.0"
   },
   "files": [

@@ -15,6 +15,12 @@ const secret =
     ? undefined
     : "dev-secret-min-32-chars-change-in-prod");
 
+if (process.env.NODE_ENV === "production" && !secret) {
+  throw new Error(
+    "BETTER_AUTH_SECRET is required in production. Set the environment variable before starting.",
+  );
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -22,7 +28,8 @@ export const auth = betterAuth({
     schema: {
       ...schema,
       user: schema.users,
-      // Workaround: Better Auth core sometimes passes double-plural "userss" to the adapter
+      // Workaround for better-auth/better-auth#3069: core sometimes passes "userss" to the adapter.
+      // Remove once upstream is fixed.
       userss: schema.users,
       session: schema.sessions,
       account: schema.accounts,
@@ -50,7 +57,8 @@ export const auth = betterAuth({
     }),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
-        // TODO: integrate email provider (e.g. Resend, SendGrid)
+        // Magic link is dev-only until an email provider is integrated (e.g. Resend, SendGrid).
+        // In production, links are logged only; users cannot complete magic-link sign-in.
         console.log(`[Magic Link] Send to ${email}: ${url}`);
       },
     }),

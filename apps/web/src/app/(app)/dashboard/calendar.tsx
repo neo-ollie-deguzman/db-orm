@@ -184,10 +184,7 @@ export function Calendar({
                       className={`flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight transition-colors sm:px-1.5 sm:text-xs ${colors}`}
                       title={`${r.userName}: ${r.note}`}
                     >
-                      <UserAvatar
-                        name={r.userName}
-                        avatarUrl={r.userAvatarUrl}
-                      />
+                      <UserAvatar name={r.userName} avatarUrl={r.userImage} />
                       <span className="hidden truncate sm:inline">
                         {r.note}
                       </span>

@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm exec next dev --turbopack",
-    "build": "pnpm exec next build",
-    "start": "pnpm exec next start",
-    "lint": "pnpm exec eslint .",
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -14,6 +14,7 @@
     "db:seed": "npx tsx --env-file=.env scripts/seed.ts",
     "db:migrate-tenancy": "npx tsx --env-file=.env scripts/migrate-tenancy.ts",
     "db:apply-rls": "npx tsx --env-file=.env scripts/apply-rls.ts",
+    "db:bootstrap-migrations": "npx tsx --env-file=.env scripts/bootstrap-drizzle-migrations.ts",
     "test:api": "npx tsx scripts/test-api.ts"
   },
   "dependencies": {

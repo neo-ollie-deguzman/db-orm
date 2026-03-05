@@ -125,7 +125,7 @@ export default async function UsersPage() {
                         userId={user.id}
                         currentName={user.name}
                         currentEmail={user.email}
-                        currentAvatarUrl={user.image}
+                        currentImage={user.image}
                         currentLocation={user.location}
                       />
                       <DeleteUserButton userId={user.id} userName={user.name} />

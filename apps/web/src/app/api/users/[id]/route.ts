@@ -27,8 +27,6 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     if (!currentUser) return unauthorized();
 
     const { id } = await params;
-    if (!id) return errorResponse(400, "Invalid user ID");
-
     const tenantId = await getTenantId();
     const user = await getUser(tenantId, id);
 
@@ -47,8 +45,6 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (!currentUser) return unauthorized();
 
     const { id } = await params;
-    if (!id) return errorResponse(400, "Invalid user ID");
-
     const json = await request.json();
     const parsed = UpdateUserBodySchema.safeParse(json);
 
@@ -89,8 +85,6 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
     if (!currentUser) return unauthorized();
 
     const { id } = await params;
-    if (!id) return errorResponse(400, "Invalid user ID");
-
     const tenantId = await getTenantId();
 
     try {

@@ -144,6 +144,7 @@ export const users = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
+    // Field "image" maps to DB column "avatar_url" for BetterAuth compatibility (expects "image").
     image: text("avatar_url"),
     location: text("location"),
     isDeleted: boolean("is_deleted").default(false).notNull(),
@@ -256,16 +257,20 @@ export const verifications = pgTable("verifications", {
 // Two-Factor secrets (BetterAuth two-factor plugin)
 // ---------------------------------------------------------------------------
 
-export const twoFactors = pgTable("two_factors", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  secret: text("secret").notNull(),
-  backupCodes: text("backup_codes").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const twoFactors = pgTable(
+  "two_factors",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("idx_two_factors_user_id").on(table.userId)],
+);
 
 export const twoFactorsRelations = relations(twoFactors, ({ one }) => ({
   user: one(users, {

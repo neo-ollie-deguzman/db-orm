@@ -1,6 +1,8 @@
 -- BetterAuth schema: users.id -> text (UUID), add email_verified/two_factor_enabled,
 -- new tables (sessions, accounts, verifications, two_factors), user_id text in reminders/memberships.
 -- WARNING: Drops and recreates users, tenant_memberships, reminders. Run only on dev or when data can be reset.
+--
+-- Note: users.avatar_url is the DB column name; the Drizzle schema maps it as "image" for BetterAuth compatibility.
 
 DROP POLICY IF EXISTS "tenant_isolation_reminders" ON "reminders";
 DROP POLICY IF EXISTS "tenant_isolation_users" ON "users";
@@ -96,6 +98,7 @@ CREATE TABLE "two_factors" (
 );
 
 ALTER TABLE "two_factors" ADD CONSTRAINT "two_factors_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+CREATE INDEX "idx_two_factors_user_id" ON "two_factors" USING btree ("user_id");
 
 CREATE TABLE "tenant_memberships" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,

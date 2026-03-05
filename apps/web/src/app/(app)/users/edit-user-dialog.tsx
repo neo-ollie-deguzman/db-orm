@@ -7,7 +7,7 @@ type Props = {
   userId: string;
   currentName: string;
   currentEmail: string;
-  currentAvatarUrl: string | null;
+  currentImage: string | null;
   currentLocation: string | null;
 };
 
@@ -15,7 +15,7 @@ export function EditUserDialog({
   userId,
   currentName,
   currentEmail,
-  currentAvatarUrl,
+  currentImage,
   currentLocation,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -104,7 +104,7 @@ export function EditUserDialog({
                   name="avatarUrl"
                   type="url"
                   placeholder="https://example.com/avatar.jpg"
-                  defaultValue={currentAvatarUrl ?? ""}
+                  defaultValue={currentImage ?? ""}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                 />
               </div>

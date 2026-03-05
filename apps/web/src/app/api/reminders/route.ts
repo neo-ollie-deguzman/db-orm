@@ -20,7 +20,7 @@ export async function GET(_request: NextRequest) {
 
     const body: RemindersListResponse = {
       reminders: remindersList.map((r) =>
-        serializeReminder(r, { name: r.userName, avatarUrl: r.userAvatarUrl }),
+        serializeReminder(r, { name: r.userName, avatarUrl: r.userImage }),
       ),
       count: remindersList.length,
     };
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const body: ReminderResponse = serializeReminder(created, {
       name: created.userName,
-      avatarUrl: created.userAvatarUrl,
+      avatarUrl: created.userImage,
     });
     return NextResponse.json(body, { status: 201 });
   } catch (error) {

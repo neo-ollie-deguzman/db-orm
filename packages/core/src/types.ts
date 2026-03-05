@@ -29,7 +29,8 @@ export interface ReminderWithUser {
   updatedAt: Date;
   deletedAt: Date | null;
   userName: string;
-  userAvatarUrl: string | null;
+  /** User image URL (denormalized from users.image); API exposes as userAvatarUrl. */
+  userImage: string | null;
 }
 
 /** Input for creating a user via the admin API (BetterAuth handles sign-up). */
