@@ -12,20 +12,15 @@ import {
   conflict,
   errorResponse,
 } from "@/lib/errors";
-import { parseId } from "@/lib/parse-id";
 import { withAuth } from "@/lib/with-auth";
 import { UpdateUserBodySchema, type UserResponse } from "@repo/api-contracts";
 import { serializeUser } from "@/lib/validations/users";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: NextRequest, { params }: RouteContext) {
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return unauthorized();
-
+export const GET = withAuth(
+  async ({ tenantId }, _request: NextRequest, { params }: RouteContext) => {
     const { id } = await params;
-    const tenantId = await getTenantId();
     const user = await getUser(tenantId, id);
 
     if (!user) return notFound("User");
@@ -71,7 +66,6 @@ export const PATCH = withAuth(
 export const DELETE = withAuth(
   async ({ tenantId }, _request: NextRequest, { params }: RouteContext) => {
     const { id } = await params;
-    const tenantId = await getTenantId();
 
     try {
       await deleteUser(tenantId, id);

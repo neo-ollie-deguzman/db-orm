@@ -14,28 +14,13 @@ export const GET = withAuth(async ({ tenantId }) => {
 
   const body: RemindersListResponse = {
     reminders: remindersList.map((r) =>
-      serializeReminder(r, { name: r.userName, avatarUrl: r.userAvatarUrl }),
+      serializeReminder(r, { name: r.userName, avatarUrl: r.userImage }),
     ),
     count: remindersList.length,
   };
 
-    const body: RemindersListResponse = {
-      reminders: remindersList.map((r) =>
-        serializeReminder(r, { name: r.userName, avatarUrl: r.userImage }),
-      ),
-      count: remindersList.length,
-    };
-
-    return NextResponse.json(body);
-  } catch (error) {
-    return internalError(error);
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return unauthorized();
+  return NextResponse.json(body);
+});
 
 export const POST = withAuth(
   async ({ currentUser, tenantId }, request: NextRequest) => {

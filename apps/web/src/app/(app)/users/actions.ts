@@ -7,7 +7,6 @@ import {
 } from "@repo/api-contracts";
 import { revalidatePath } from "next/cache";
 import { getTenantId } from "@/lib/tenant";
-import crypto from "node:crypto";
 
 export async function getUsers() {
   const tenantId = await getTenantId();
@@ -53,12 +52,17 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUser(id: string, formData: FormData) {
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const avatarUrl = (formData.get("avatarUrl") as string) || null;
-  const location = (formData.get("location") as string) || null;
+  const raw = {
+    name: formData.get("name") ?? undefined,
+    email: formData.get("email") ?? undefined,
+    avatarUrl: formData.get("avatarUrl") || undefined,
+    location: formData.get("location") || undefined,
+  };
 
-  if (Object.keys(raw).length === 0) {
+  const defined = Object.fromEntries(
+    Object.entries(raw).filter(([, v]) => v !== undefined && v !== ""),
+  );
+  if (Object.keys(defined).length === 0) {
     return { error: "No fields to update." };
   }
 
@@ -70,13 +74,15 @@ export async function updateUser(id: string, formData: FormData) {
     return { error: message };
   }
 
+  const { name, email, avatarUrl, location } = parsed.data;
+
   try {
     const tenantId = await getTenantId();
     await core.updateUser(tenantId, id, {
       name,
       email,
-      image: avatarUrl,
-      location,
+      image: avatarUrl ?? null,
+      location: location ?? null,
     });
   } catch (e) {
     if (e instanceof core.CoreNotFoundError) {

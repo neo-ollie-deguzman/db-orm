@@ -5,17 +5,10 @@ import {
   type UsersListResponse,
 } from "@repo/api-contracts";
 import { listUsers, createUser, CoreConflictError } from "@repo/core";
-import { getCurrentUser } from "@/lib/auth";
-import { getTenantId } from "@/lib/tenant";
-import {
-  unauthorized,
-  validationError,
-  conflict,
-  internalError,
-} from "@/lib/errors";
+import { validationError, conflict } from "@/lib/errors";
 import { validateResponse } from "@/lib/validate-response";
 import { serializeUser } from "@/lib/validations/users";
-import crypto from "node:crypto";
+import { withAuth } from "@/lib/with-auth";
 
 export const GET = withAuth(async ({ tenantId }) => {
   const rows = await listUsers(tenantId);
@@ -32,23 +25,19 @@ export const POST = withAuth(async ({ tenantId }, request: NextRequest) => {
   const json = await request.json();
   const parsed = CreateUserBodySchema.safeParse(json);
 
-    const { name, email, avatarUrl, location } = parsed.data;
-    const tenantId = await getTenantId();
+  if (!parsed.success) {
+    return validationError(parsed.error);
+  }
 
-    try {
-      const created = await createUser(tenantId, {
-        name,
-        email,
-        image: avatarUrl ?? null,
-        location,
-      });
+  const { name, email, avatarUrl, location } = parsed.data;
 
   try {
-    const created = await createUser(
-      tenantId,
-      { name, email, avatarUrl, location },
-      passwordHash,
-    );
+    const created = await createUser(tenantId, {
+      name,
+      email,
+      image: avatarUrl ?? null,
+      location,
+    });
 
     const body = validateResponse(UserResponseSchema, serializeUser(created));
     return NextResponse.json(body, { status: 201 });
