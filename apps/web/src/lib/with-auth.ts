@@ -13,12 +13,6 @@ export type AuthContext = {
  * and top-level error handling. Eliminates the repeated boilerplate of
  * checking auth, resolving the tenant, and catching unexpected errors.
  */
-export function withAuth(
-  handler: (ctx: AuthContext) => Promise<NextResponse>,
-): () => Promise<NextResponse>;
-export function withAuth<Args extends unknown[]>(
-  handler: (ctx: AuthContext, ...args: Args) => Promise<NextResponse>,
-): (...args: Args) => Promise<NextResponse>;
 export function withAuth<Args extends unknown[]>(
   handler: (ctx: AuthContext, ...args: Args) => Promise<NextResponse>,
 ): (...args: Args) => Promise<NextResponse> {
