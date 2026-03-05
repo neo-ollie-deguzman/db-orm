@@ -11,7 +11,7 @@ export async function GET() {
       id: user.id,
       name: user.name,
       email: user.email,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: user.image ?? null,
     });
   } catch (error) {
     return internalError(error);

@@ -183,7 +183,7 @@ function UserAvatar({
 type EditProps = {
   open: boolean;
   reminder: Reminder;
-  currentUserId: number | null;
+  currentUserId: string | null;
   onClose: () => void;
   onSave: (data: {
     id: number;

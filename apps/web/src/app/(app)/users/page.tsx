@@ -75,9 +75,9 @@ export default async function UsersPage() {
                   </td>
                   <td className="px-6 py-3 font-medium">
                     <div className="flex items-center gap-3">
-                      {user.avatarUrl ? (
+                      {user.image ? (
                         <img
-                          src={user.avatarUrl}
+                          src={user.image}
                           alt={user.name}
                           className="h-8 w-8 shrink-0 rounded-full object-cover"
                         />
@@ -125,7 +125,7 @@ export default async function UsersPage() {
                         userId={user.id}
                         currentName={user.name}
                         currentEmail={user.email}
-                        currentAvatarUrl={user.avatarUrl}
+                        currentAvatarUrl={user.image}
                         currentLocation={user.location}
                       />
                       <DeleteUserButton userId={user.id} userName={user.name} />

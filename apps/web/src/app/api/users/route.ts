@@ -6,7 +6,7 @@ import {
   type UserResponse,
 } from "@repo/api-contracts";
 import { listUsers, createUser, CoreConflictError } from "@repo/core";
-import { getCurrentUser, hashPassword } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { getTenantId } from "@/lib/tenant";
 import {
   unauthorized,
@@ -50,19 +50,14 @@ export async function POST(request: NextRequest) {
 
     const { name, email, avatarUrl, location } = parsed.data;
     const tenantId = await getTenantId();
-    const passwordHash = await hashPassword("passworD123");
 
     try {
-      const created = await createUser(
-        tenantId,
-        {
-          name,
-          email,
-          avatarUrl,
-          location,
-        },
-        passwordHash,
-      );
+      const created = await createUser(tenantId, {
+        name,
+        email,
+        image: avatarUrl ?? null,
+        location,
+      });
 
       const body = validateResponse(UserResponseSchema, serializeUser(created));
       return NextResponse.json(body, { status: 201 });

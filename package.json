@@ -15,7 +15,6 @@
     "db:studio": "pnpm --filter web db:studio",
     "db:seed": "pnpm --filter web db:seed",
     "db:migrate-tenancy": "pnpm --filter web db:migrate-tenancy",
-    "db:migrate-auth": "pnpm --filter web db:migrate-auth",
     "db:apply-rls": "pnpm --filter web db:apply-rls",
     "build:packages": "pnpm --filter './packages/**' run build",
     "typecheck": "pnpm run build:packages && pnpm -r exec tsc --noEmit",

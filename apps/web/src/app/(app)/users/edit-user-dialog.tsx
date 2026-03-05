@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { updateUser } from "./actions";
 
 type Props = {
-  userId: number;
+  userId: string;
   currentName: string;
   currentEmail: string;
   currentAvatarUrl: string | null;

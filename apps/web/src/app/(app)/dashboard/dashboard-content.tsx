@@ -45,10 +45,10 @@ function toApiErrorMessage(err: unknown): string {
 
 const ALL_STATUSES: ReminderStatus[] = ["pending", "completed", "dismissed"];
 
-type UniqueUser = { id: number; name: string; avatarUrl: string | null };
+type UniqueUser = { id: string; name: string; avatarUrl: string | null };
 
 function deriveUniqueUsers(reminders: Reminder[]): UniqueUser[] {
-  const map = new Map<number, UniqueUser>();
+  const map = new Map<string, UniqueUser>();
   for (const r of reminders) {
     if (!map.has(r.userId)) {
       map.set(r.userId, {
@@ -197,8 +197,7 @@ export function DashboardContent() {
   const filteredReminders = useMemo(() => {
     let filtered = reminders;
     if (filterUser !== "all") {
-      const uid = Number(filterUser);
-      filtered = filtered.filter((r) => r.userId === uid);
+      filtered = filtered.filter((r) => r.userId === filterUser);
     }
     if (filterStatus !== "all") {
       filtered = filtered.filter((r) => r.status === filterStatus);

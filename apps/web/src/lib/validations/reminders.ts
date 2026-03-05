@@ -1,12 +1,13 @@
 import type { ReminderResponse, ReminderStatus } from "@repo/api-contracts";
 
 /**
- * Serialize a reminder row (and optional user info) to the API response shape (matches ReminderResponseSchema).
+ * Serialize a reminder row (and optional user info) to the API response shape.
+ * Maps the core `userAvatarUrl` to the API response field.
  */
 export function serializeReminder(
   reminder: {
     id: number;
-    userId: number;
+    userId: string;
     note: string;
     status: ReminderStatus;
     reminderDate: Date;

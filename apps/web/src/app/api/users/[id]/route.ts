@@ -21,22 +21,16 @@ import { serializeUser } from "@/lib/validations/users";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-function parseId(id: string): number | null {
-  const parsed = Number(id);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return unauthorized();
 
     const { id } = await params;
-    const userId = parseId(id);
-    if (!userId) return errorResponse(400, "Invalid user ID");
+    if (!id) return errorResponse(400, "Invalid user ID");
 
     const tenantId = await getTenantId();
-    const user = await getUser(tenantId, userId);
+    const user = await getUser(tenantId, id);
 
     if (!user) return notFound("User");
 
@@ -53,8 +47,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (!currentUser) return unauthorized();
 
     const { id } = await params;
-    const userId = parseId(id);
-    if (!userId) return errorResponse(400, "Invalid user ID");
+    if (!id) return errorResponse(400, "Invalid user ID");
 
     const json = await request.json();
     const parsed = UpdateUserBodySchema.safeParse(json);
@@ -71,7 +64,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const tenantId = await getTenantId();
 
     try {
-      const updated = await updateUser(tenantId, userId, updates);
+      const { avatarUrl: apiAvatarUrl, ...rest } = updates;
+      const updated = await updateUser(tenantId, id, {
+        ...rest,
+        ...(apiAvatarUrl !== undefined ? { image: apiAvatarUrl } : {}),
+      });
       const body: UserResponse = serializeUser(updated);
       return NextResponse.json(body);
     } catch (e) {
@@ -92,13 +89,12 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
     if (!currentUser) return unauthorized();
 
     const { id } = await params;
-    const userId = parseId(id);
-    if (!userId) return errorResponse(400, "Invalid user ID");
+    if (!id) return errorResponse(400, "Invalid user ID");
 
     const tenantId = await getTenantId();
 
     try {
-      await deleteUser(tenantId, userId);
+      await deleteUser(tenantId, id);
       return new NextResponse(null, { status: 204 });
     } catch (e) {
       if (e instanceof CoreNotFoundError) return notFound("User");

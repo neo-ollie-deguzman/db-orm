@@ -6,7 +6,7 @@ export interface CreateReminderInput {
   note: string;
   reminderDate: Date;
   status?: ReminderStatus;
-  userId: number;
+  userId: string;
 }
 
 /** Input for updating a reminder (all fields optional). */
@@ -20,7 +20,7 @@ export interface UpdateReminderInput {
 export interface ReminderWithUser {
   id: number;
   tenantId: string;
-  userId: number;
+  userId: string;
   note: string;
   status: ReminderStatus;
   reminderDate: Date;
@@ -32,11 +32,11 @@ export interface ReminderWithUser {
   userAvatarUrl: string | null;
 }
 
-/** Input for creating a user (no password; caller hashes and passes passwordHash). */
+/** Input for creating a user via the admin API (BetterAuth handles sign-up). */
 export interface CreateUserInput {
   name: string;
   email: string;
-  avatarUrl?: string | null;
+  image?: string | null;
   location?: string | null;
 }
 
@@ -44,6 +44,6 @@ export interface CreateUserInput {
 export interface UpdateUserInput {
   name?: string;
   email?: string;
-  avatarUrl?: string | null;
+  image?: string | null;
   location?: string | null;
 }

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveTenant } from "@/lib/tenant-resolver";
-import { verifyToken } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+const PUBLIC_PATHS = ["/login", "/api/auth"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
 }
+
+const SESSION_COOKIE = "better-auth.session_token";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -38,10 +39,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  const token = request.cookies.get("session")?.value;
+  const hasSession = request.cookies.has(SESSION_COOKIE);
   const isApiRoute = pathname.startsWith("/api/");
 
-  if (!token) {
+  if (!hasSession) {
     if (isApiRoute) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -50,24 +51,6 @@ export async function middleware(request: NextRequest) {
     loginUrl.search = "";
     return NextResponse.redirect(loginUrl);
   }
-
-  const session = await verifyToken(token);
-  if (!session || session.tenantId !== tenant.id) {
-    if (isApiRoute) {
-      const res = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      res.cookies.delete("session");
-      return res;
-    }
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.search = "";
-    const response = NextResponse.redirect(loginUrl);
-    response.cookies.delete("session");
-    return response;
-  }
-
-  requestHeaders.set("x-user-id", String(session.userId));
-  requestHeaders.set("x-user-email", session.email);
 
   return NextResponse.next({ request: { headers: requestHeaders } });
 }

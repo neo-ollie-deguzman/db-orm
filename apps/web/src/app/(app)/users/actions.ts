@@ -2,7 +2,6 @@
 
 import * as core from "@repo/core";
 import { revalidatePath } from "next/cache";
-import { hashPassword } from "@/lib/auth";
 import { getTenantId } from "@/lib/tenant";
 
 export async function getUsers() {
@@ -22,25 +21,25 @@ export async function createUser(formData: FormData) {
 
   try {
     const tenantId = await getTenantId();
-    const passwordHash = await hashPassword("passworD123");
-    await core.createUser(
-      tenantId,
-      { name, email, avatarUrl, location },
-      passwordHash,
-    );
+    await core.createUser(tenantId, {
+      name,
+      email,
+      image: avatarUrl,
+      location,
+    });
   } catch (e) {
     if (e instanceof core.CoreConflictError) {
       return { error: "A user with that email already exists." };
     }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return { error: message };
+    console.error("[users/actions:createUser]", e);
+    return { error: "Internal server error." };
   }
 
   revalidatePath("/users");
   return { success: true };
 }
 
-export async function updateUser(id: number, formData: FormData) {
+export async function updateUser(id: string, formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const avatarUrl = (formData.get("avatarUrl") as string) || null;
@@ -52,7 +51,12 @@ export async function updateUser(id: number, formData: FormData) {
 
   try {
     const tenantId = await getTenantId();
-    await core.updateUser(tenantId, id, { name, email, avatarUrl, location });
+    await core.updateUser(tenantId, id, {
+      name,
+      email,
+      image: avatarUrl,
+      location,
+    });
   } catch (e) {
     if (e instanceof core.CoreNotFoundError) {
       return { error: "User not found." };
@@ -60,15 +64,15 @@ export async function updateUser(id: number, formData: FormData) {
     if (e instanceof core.CoreConflictError) {
       return { error: "A user with that email already exists." };
     }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return { error: message };
+    console.error("[users/actions:updateUser]", e);
+    return { error: "Internal server error." };
   }
 
   revalidatePath("/users");
   return { success: true };
 }
 
-export async function deleteUser(id: number) {
+export async function deleteUser(id: string) {
   try {
     const tenantId = await getTenantId();
     await core.deleteUser(tenantId, id);
@@ -76,8 +80,8 @@ export async function deleteUser(id: number) {
     if (e instanceof core.CoreNotFoundError) {
       return { error: "User not found." };
     }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return { error: message };
+    console.error("[users/actions:deleteUser]", e);
+    return { error: "Internal server error." };
   }
 
   revalidatePath("/users");

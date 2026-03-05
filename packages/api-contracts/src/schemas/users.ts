@@ -45,9 +45,9 @@ export const UpdateUserBodySchema = z.object({
     .nullish(),
 });
 
-/** Single user in API responses (no password, dates as ISO strings). */
+/** Single user in API responses (dates as ISO strings). */
 export const UserResponseSchema = z.object({
-  id: z.number(),
+  id: z.string(),
   name: z.string(),
   email: z.string(),
   avatarUrl: z.string().nullable(),

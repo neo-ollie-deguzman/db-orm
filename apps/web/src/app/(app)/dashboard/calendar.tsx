@@ -69,7 +69,7 @@ type CalendarProps = {
   year: number;
   month: number;
   reminders: Reminder[];
-  currentUserId: number | null;
+  currentUserId: string | null;
   onReminderClick: (reminder: Reminder) => void;
   onDayClick: (date: Date) => void;
   onPrevMonth: () => void;

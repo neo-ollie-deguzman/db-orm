@@ -10,12 +10,12 @@ import { CoreNotFoundError } from "./errors";
 function rowToReminderWithUser(
   reminder: typeof reminders.$inferSelect,
   userName: string | null,
-  userAvatarUrl: string | null,
+  userImage: string | null,
 ): ReminderWithUser {
   return {
     ...reminder,
     userName: userName ?? "Unknown",
-    userAvatarUrl: userAvatarUrl ?? null,
+    userAvatarUrl: userImage ?? null,
   };
 }
 
@@ -30,7 +30,7 @@ export async function listReminders(
       .select({
         reminder: reminders,
         userName: users.name,
-        userAvatarUrl: users.avatarUrl,
+        userImage: users.image,
       })
       .from(reminders)
       .leftJoin(users, eq(reminders.userId, users.id))
@@ -39,7 +39,7 @@ export async function listReminders(
   );
 
   return rows.map((r) =>
-    rowToReminderWithUser(r.reminder, r.userName, r.userAvatarUrl),
+    rowToReminderWithUser(r.reminder, r.userName, r.userImage),
   );
 }
 
@@ -69,7 +69,7 @@ export async function createReminder(
 
   const [userRow] = await withTenant(tenantId, (tx) =>
     tx
-      .select({ name: users.name, avatarUrl: users.avatarUrl })
+      .select({ name: users.name, image: users.image })
       .from(users)
       .where(eq(users.id, created.userId))
       .limit(1),
@@ -78,7 +78,7 @@ export async function createReminder(
   return rowToReminderWithUser(
     created,
     userRow?.name ?? null,
-    userRow?.avatarUrl ?? null,
+    userRow?.image ?? null,
   );
 }
 
@@ -94,7 +94,7 @@ export async function getReminder(
       .select({
         reminder: reminders,
         userName: users.name,
-        userAvatarUrl: users.avatarUrl,
+        userImage: users.image,
       })
       .from(reminders)
       .leftJoin(users, eq(reminders.userId, users.id))
@@ -105,7 +105,7 @@ export async function getReminder(
 
   if (!row) throw new CoreNotFoundError("Reminder");
 
-  return rowToReminderWithUser(row.reminder, row.userName, row.userAvatarUrl);
+  return rowToReminderWithUser(row.reminder, row.userName, row.userImage);
 }
 
 /**
@@ -123,7 +123,7 @@ export async function updateReminder(
       .select({
         reminder: reminders,
         userName: users.name,
-        userAvatarUrl: users.avatarUrl,
+        userImage: users.image,
       })
       .from(reminders)
       .leftJoin(users, eq(reminders.userId, users.id))
@@ -147,7 +147,7 @@ export async function updateReminder(
     return {
       reminder: updated,
       userName: existing.userName,
-      userAvatarUrl: existing.userAvatarUrl,
+      userImage: existing.userImage,
     };
   });
 
@@ -156,7 +156,7 @@ export async function updateReminder(
   return rowToReminderWithUser(
     result.reminder,
     result.userName,
-    result.userAvatarUrl,
+    result.userImage,
   );
 }
 
