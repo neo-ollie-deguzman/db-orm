@@ -57,9 +57,11 @@ export const auth = betterAuth({
     }),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
-        // Magic link is dev-only until an email provider is integrated (e.g. Resend, SendGrid).
-        // In production, links are logged only; users cannot complete magic-link sign-in.
-        console.log(`[Magic Link] Send to ${email}: ${url}`);
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`[Magic Link] Send to ${email}: ${url}`);
+        } else {
+          console.log(`[Magic Link] Sent to ${email}`);
+        }
       },
     }),
   ],

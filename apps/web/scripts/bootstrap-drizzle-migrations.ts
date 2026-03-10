@@ -12,7 +12,8 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { createHash } from "crypto";
 import { readFileSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -23,7 +24,8 @@ async function run() {
     process.exit(1);
   }
 
-  const drizzleDir = join(process.cwd(), "../../packages/db/drizzle");
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const drizzleDir = join(__dirname, "../../../packages/db/drizzle");
 
   // Insert 0000, 0001, 0002 so Drizzle considers them applied (only runs 0003+).
   const entries = [
@@ -41,7 +43,8 @@ async function run() {
       CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
         id SERIAL PRIMARY KEY,
         hash text NOT NULL,
-        created_at bigint
+        created_at bigint,
+        tag text
       )
     `);
 
@@ -57,8 +60,8 @@ async function run() {
       const sql = readFileSync(join(drizzleDir, `${entry.tag}.sql`), "utf-8");
       const hash = createHash("sha256").update(sql).digest("hex");
       await client.query(
-        `INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)`,
-        [hash, entry.when],
+        `INSERT INTO drizzle.__drizzle_migrations (hash, created_at, tag) VALUES ($1, $2, $3)`,
+        [hash, entry.when, entry.tag],
       );
     }
 

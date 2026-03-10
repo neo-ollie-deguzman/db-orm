@@ -1,0 +1,23 @@
+language: en-US
+tone_instructions: Be concise and actionable. Flag real issues, skip nitpicks on style already covered by ESLint/Prettier.
+
+reviews:
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  path_instructions:
+    - path: "packages/db/drizzle/**"
+      instructions: "These are SQL migration files. Check for missing NOT NULL, index, or FK constraints. Do not suggest style changes."
+    - path: "apps/web/src/app/api/**"
+      instructions: "API route handlers. Verify auth checks, input validation, and proper error responses."
+
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/pnpm-lock.yaml"
+    - "!**/.next/**"
+
+chat:
+  auto_reply: true

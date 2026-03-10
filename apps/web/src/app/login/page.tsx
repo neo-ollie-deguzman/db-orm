@@ -2,7 +2,7 @@ import { getTenantContext } from "@/lib/tenant";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
-  const { slug, tenantId } = await getTenantContext();
+  const { slug } = await getTenantContext();
 
   return (
     <div className="w-full max-w-sm">
@@ -30,7 +30,7 @@ export default async function LoginPage() {
             Workspace: <span className="font-medium text-gray-700">{slug}</span>
           </p>
         </div>
-        <LoginForm tenantId={tenantId} />
+        <LoginForm />
       </div>
       <p className="mt-4 text-center text-xs text-gray-400">
         All accounts use password{" "}

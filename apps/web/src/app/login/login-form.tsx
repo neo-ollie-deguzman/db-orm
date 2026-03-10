@@ -4,11 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
 
-type Props = {
-  tenantId: string;
-};
-
-export function LoginForm({ tenantId: _tenantId }: Props) {
+export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

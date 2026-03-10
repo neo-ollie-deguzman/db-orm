@@ -21,7 +21,20 @@ export function withAuth<Args extends unknown[]>(
       const currentUser = await getCurrentUser();
       if (!currentUser) return unauthorized();
 
-      const tenantId = await getTenantId();
+      let tenantId: string;
+      try {
+        tenantId = await getTenantId();
+      } catch (err) {
+        if (
+          err instanceof Error &&
+          err.message.startsWith("Missing tenant context")
+        ) {
+          return unauthorized();
+        }
+        console.error("[with-auth] getTenantId failed unexpectedly:", err);
+        return internalError(err);
+      }
+
       return await handler({ currentUser, tenantId }, ...args);
     } catch (error) {
       return internalError(error);

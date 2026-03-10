@@ -7,7 +7,8 @@
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { readFileSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -18,9 +19,10 @@ async function run() {
     process.exit(1);
   }
 
+  const __dirname = dirname(fileURLToPath(import.meta.url));
   const sqlPath = join(
-    process.cwd(),
-    "../../packages/db/drizzle/0002_betterauth_schema.sql",
+    __dirname,
+    "../../../packages/db/drizzle/0002_betterauth_schema.sql",
   );
   const sql = readFileSync(sqlPath, "utf-8");
 

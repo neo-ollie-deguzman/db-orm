@@ -81,8 +81,8 @@ export async function updateUser(id: string, formData: FormData) {
     await core.updateUser(tenantId, id, {
       name,
       email,
-      image: avatarUrl ?? null,
-      location: location ?? null,
+      ...(avatarUrl !== undefined && { image: avatarUrl }),
+      ...(location !== undefined && { location }),
     });
   } catch (e) {
     if (e instanceof core.CoreNotFoundError) {

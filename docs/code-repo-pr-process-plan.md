@@ -107,8 +107,33 @@ git push -u origin main
    - Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, etc.
    - Format: `type(scope): description` (scope optional).
    - Example: `feat(api): add reminders list endpoint`.
-2. **Use Cursor/IDE** to generate commit messages from staged changes when possible.
-3. Optional: **commitlint** — enforce format via hook (see 2.3).
+2. **Use Cursor's sparkle icon (✨)** in the Source Control panel to generate commit messages from staged changes. The icon appears next to the commit message input (`Ctrl+Shift+G` to open Source Control). You can also bind it to a shortcut via Keyboard Shortcuts → "Generate Commit Message".
+3. **Add a Cursor rule** so the sparkle icon generates the right format. Create `.cursor/rules/commits.mdc`:
+
+   ```markdown
+   ---
+   description: Commit message format for AI-generated commits
+   globs: []
+   alwaysApply: true
+   ---
+
+   Generate commit messages in Conventional Commits format:
+
+   type(scope): short description
+
+   Types: feat, fix, refactor, docs, test, chore, ci, perf, style
+   Scope: package or area (api-contracts, core, db, auth, api, web). Omit scope only if change spans many packages.
+   Description: lowercase, imperative mood, no period, max 72 chars.
+
+   Examples:
+   feat(api): add DELETE /api/reminders/:id endpoint
+   fix(core): prevent duplicate email on createUser
+   refactor(db): extract tenant helper into separate module
+   docs: update PR process with CodeRabbit
+   chore: upgrade drizzle-orm to 0.45
+   ```
+
+4. **commitlint** — enforce format via hook as the safety net (see 2.3). If the sparkle icon generates a bad format, commitlint rejects the commit.
 
 ### 2.2 Pre-commit hooks (Husky + lint/format)
 
@@ -140,7 +165,7 @@ git push -u origin main
    ```bash
    pnpm exec lint-staged
    ```
-4. **Optional: commit-msg hook** — use commitlint to enforce conventional commits:
+4. **commit-msg hook** — use commitlint to validate what the sparkle icon generates:
    ```bash
    pnpm add -D -w @commitlint/cli @commitlint/config-conventional
    echo "module.exports = { extends: ['@commitlint/config-conventional'] };" > commitlint.config.js
@@ -155,8 +180,9 @@ git push -u origin main
 ### 2.4 Checklist — Phase 2
 
 - [ ] Conventional commit convention documented.
+- [ ] `.cursor/rules/commits.mdc` created (sparkle icon generates correct format).
 - [ ] Husky + lint-staged installed; pre-commit runs format and lint.
-- [ ] Optional: commitlint and commit-msg hook added.
+- [ ] Commitlint and commit-msg hook added (validates sparkle icon output).
 - [ ] `pnpm lint` and format check work at root (or per package).
 
 ---
@@ -345,13 +371,7 @@ The names in “Require status checks to pass” must match the **job names** in
 
 ### 5.1 Choose the tool
 
-From the research doc:
-
-- **GitHub, best-in-class review:** CodeRabbit (recommended).
-- **Bitbucket or strong Jira:** Rovo Dev.
-- **Free / minimal:** GitHub Copilot PR summary, or Gemini Code Assist.
-
-The steps below assume **CodeRabbit** for GitHub.
+**Decision: CodeRabbit** for GitHub (confirmed). The steps below cover installation and configuration.
 
 ### 5.2 Install CodeRabbit (GitHub)
 
@@ -416,13 +436,100 @@ Branch protection already requires at least one human approval (Phase 4). Do **n
 Run through once to confirm the full flow:
 
 1. **Branch:** Create `feature/test-pr-process` from `main`, make a small change (e.g. edit README or add a comment).
-2. **Commit:** Use a conventional commit message (e.g. `docs: add PR process verification`); pre-commit hook runs (lint/format).
+2. **Commit:** Stage the change, click the sparkle icon (✨) to generate the message (e.g. `docs: add PR process verification`), commit. Commitlint validates; lint-staged formats.
 3. **Push:** Push the branch; CI workflow runs (Lint, Typecheck, Test, Build).
-4. **PR:** Open a pull request into `main`; add description (or use Copilot Summary).
-5. **AI review:** CodeRabbit (or your tool) posts a review or comments.
+4. **PR:** Ask Cursor Agent "create a PR for this branch" (generates title + body from diff), or run `gh pr create` manually.
+5. **AI review:** CodeRabbit auto-reviews (summary, inline comments, one-click fixes).
 6. **Human review:** A teammate (or second account) approves the PR.
 7. **Merge:** Ensure all status checks are green and one approval is present; merge (squash or rebase per your policy).
 8. **Post-merge:** If deploy workflow is configured, confirm it runs on `main`.
+
+---
+
+## Real-world example: soft-delete reminders endpoint
+
+A concrete walkthrough of the full PR process using this codebase (adding `DELETE /api/reminders/:id` with soft-delete).
+
+### 1. Branch
+
+```bash
+git checkout main && git pull
+git checkout -b feature/PROJ-42-soft-delete-reminder
+```
+
+### 2. Commits
+
+Implement across three packages. For each commit: stage files → click sparkle icon (✨) → Cursor generates the message using `.cursor/rules/commits.mdc` → commitlint validates → lint-staged runs prettier.
+
+```bash
+# Stage packages/api-contracts/src/schemas/reminders.ts → click ✨ → generates:
+git commit -m "feat(api-contracts): add delete reminder response schema"
+
+# Stage packages/core/src/reminders.ts → click ✨ → generates:
+git commit -m "feat(core): implement soft-delete for reminders"
+
+# Stage apps/web/src/app/api/reminders/[id]/route.ts → click ✨ → generates:
+git commit -m "feat(api): add DELETE /api/reminders/:id endpoint"
+```
+
+### 3. Push & PR
+
+```bash
+git push -u origin feature/PROJ-42-soft-delete-reminder
+```
+
+Push triggers CI (lint → typecheck → test → build). Create the PR using Cursor Agent or manually:
+
+**Option A — Cursor Agent** (generates title + body from diff):
+Ask the agent: "create a PR for this branch targeting main". Cursor reads the commits and diff, generates a conventional title and summary, and runs `gh pr create`.
+
+**Option B — manual `gh` CLI:**
+
+```bash
+gh pr create \
+  --title "feat: soft-delete reminders via DELETE /api/reminders/:id" \
+  --body "## Summary
+- Adds DeleteReminderResponseSchema to @repo/api-contracts
+- Updates deleteReminder() in @repo/core to set isDeleted=true instead of hard delete
+- Adds DELETE handler in apps/web/src/app/api/reminders/[id]/route.ts using withAuth()
+
+Closes PROJ-42"
+```
+
+**Option C — `gh` CLI one-liner** (auto-generates from commit log):
+
+```bash
+gh pr create \
+  --title "$(git log main..HEAD --format='%s' | head -1)" \
+  --body "$(git log main..HEAD --format='- %s')"
+```
+
+After the PR is opened, **CodeRabbit** automatically adds a detailed walkthrough comment (file-by-file summary, severity-ranked findings, one-click fixes).
+
+### 4. Review
+
+- **CodeRabbit** auto-reviews within minutes: posts a PR summary/walkthrough, inline comments ranked by severity (e.g. flags missing `pnpm generate:openapi` after adding a schema, suggests adding a test for the soft-delete path), and offers one-click fixes for style issues.
+- **CI** must be green: Lint, Typecheck, Test, Build all pass.
+- **Human reviewer** reads CodeRabbit's summary, checks the diff focusing on domain logic (is soft-delete correct? does RLS still apply?), and approves.
+
+### 5. Merge
+
+All gates met (CI green + CodeRabbit reviewed + 1 human approval). Squash merge:
+
+```bash
+gh pr merge --squash
+```
+
+Result on `main`: single commit `feat: soft-delete reminders via DELETE /api/reminders/:id (#18)`.
+
+### 6. Gates (pre-configured, not per-PR)
+
+These are enforced by branch protection on `main`:
+
+- Required status checks: `Lint`, `Typecheck`, `Test`, `Build` must pass.
+- Required reviews: at least 1 human approval.
+- No force-push to `main`.
+- No merge with failing checks.
 
 ---
 

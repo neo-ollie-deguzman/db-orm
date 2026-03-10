@@ -227,8 +227,8 @@ function UserAvatar({
       <Image
         src={avatarUrl}
         alt={name}
-        width={18}
-        height={18}
+        width={16}
+        height={16}
         unoptimized
         className="h-4 w-4 shrink-0 rounded-full object-cover sm:h-[18px] sm:w-[18px]"
       />

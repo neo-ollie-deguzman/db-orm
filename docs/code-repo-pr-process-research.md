@@ -11,18 +11,64 @@ This document covers: (1) where to host the repo (GitHub, Bitbucket, or GitLab),
 **End-to-end flow:**
 
 - **Repo:** Prefer **GitHub** for best AI tooling and Actions; use Bitbucket only if committed to Atlassian; GitLab if you want one platform and optional self-host.
-- **Process:** Feature branches → conventional commits (AI-assisted) → push → CI runs (lint, typecheck, test, build) → create PR (AI/bot) → AI first-pass review + human approval → merge when all quality gates pass.
+- **Process:** Feature branches → conventional commits (AI-assisted) → push → CI runs (lint, typecheck, test, build) → create PR (AI/bot) → **CodeRabbit** auto-review + human approval → merge when all quality gates pass.
 - **Quality gates:** Lint, format, typecheck, test, build (and optionally security) in CI; branch protection requires these status checks + at least one human approval.
 - **CI/CD:** One pipeline (Actions / Pipelines / GitLab CI) that runs the same checks; optional deploy on merge to `main`.
+- **AI code review:** **CodeRabbit** as the primary AI reviewer (installed as a GitHub App); auto-reviews every PR with multi-layered analysis (AI + 40+ linters), severity-ranked feedback, and one-click fixes. Human approval remains mandatory.
 
 **PR process in short:**
 
 1. **Branch** — `main` / `develop`; feature branches `feature/<ticket>-short-name`; AI can suggest branch names from tickets.
 2. **Commits** — Conventional commits; pre-commit lint/format; same checks in CI.
 3. **Push & PR** — Push triggers CI; AI/bot creates PR with title, description, ticket link, reviewers.
-4. **Review** — AI first (e.g. Copilot PR summary); CI must be green; at least one human approval.
-5. **Merge** — When AI review done, CI green, approvals met; prefer squash or rebase merge.
+4. **Review** — CodeRabbit auto-reviews (summary, inline comments, one-click fixes); CI must be green; at least one human approval.
+5. **Merge** — After CodeRabbit has posted its review (feedback should be addressed, though not enforced by automation), CI green, and human approvals met; prefer squash or rebase merge.
 6. **Gates** — Branch protection: required status checks, required reviews, no force-push on `main`/`develop`.
+
+**Real-world example** — adding `DELETE /api/reminders/:id` (soft-delete):
+
+1. **Branch**
+
+   ```bash
+   git checkout main && git pull
+   git checkout -b feature/PROJ-42-soft-delete-reminder
+   ```
+
+2. **Commits** (sparkle icon generates message → commitlint validates → lint-staged formats)
+
+   ```bash
+   # Stage packages/api-contracts/src/schemas/reminders.ts → click ✨ → generates:
+   git commit -m "feat(api-contracts): add delete reminder response schema"
+
+   # Stage packages/core/src/reminders.ts → click ✨ → generates:
+   git commit -m "feat(core): implement soft-delete for reminders"
+
+   # Stage apps/web/src/app/api/reminders/[id]/route.ts → click ✨ → generates:
+   git commit -m "feat(api): add DELETE /api/reminders/:id endpoint"
+   ```
+
+3. **Push & PR** (Cursor Agent generates title + body from diff; CodeRabbit adds walkthrough after)
+
+   ```bash
+   git push -u origin feature/PROJ-42-soft-delete-reminder
+
+   # Ask Cursor Agent: "create a PR for this branch" — or manually:
+   gh pr create \
+     --title "feat: soft-delete reminders via DELETE /api/reminders/:id" \
+     --body "Adds DeleteReminderResponseSchema, soft-delete core logic, and DELETE handler. Closes PROJ-42"
+   ```
+
+4. **Review** — CodeRabbit posts within minutes: PR walkthrough summary, inline comments (e.g. "missing `pnpm generate:openapi`"), severity-ranked issues. CI runs lint → typecheck → test → build. Human reviewer reads CodeRabbit summary, checks domain logic, approves.
+
+5. **Merge** — CI green + CodeRabbit reviewed + 1 human approval met:
+
+   ```bash
+   gh pr merge --squash
+   ```
+
+   Result on `main`: `feat: soft-delete reminders via DELETE /api/reminders/:id (#18)`
+
+6. **Gates** (pre-configured on `main`): required status checks (`Lint`, `Typecheck`, `Test`, `Build`), 1+ human approval, no force-push, no merge with failing checks.
 
 **Workflow illustration:**
 
@@ -59,8 +105,8 @@ This document covers: (1) where to host the repo (GitHub, Bitbucket, or GitLab),
        │     description, link ticket)      │                             │
        ├──────────────────────────────────►  PR created                    │
        │                                    │                             │
-       │                                    │  7. AI PR review (Copilot /  │
-       │                                    │     custom bot) comments     │
+       │                                    │  7. CodeRabbit auto-review   │
+       │                                    │     (summary + inline)       │
        │                                    │  8. Human reviewer approves │
        │                                    │  9. All checks green        │
        │                                    │                             │
@@ -99,11 +145,16 @@ flowchart LR
     M[Build]
   end
 
+  subgraph AIReview["AI Review"]
+    CR[CodeRabbit]
+  end
+
   A --> I
   C --> J
   J --> K --> L --> M
   M --> G
-  I --> H
+  I --> CR
+  CR --> H
   G --> E
   H --> E
 ```
@@ -130,28 +181,60 @@ flowchart LR
 
 ### Quality gates (what to enforce)
 
-| Gate             | Where             | What                                                            |
-| ---------------- | ----------------- | --------------------------------------------------------------- |
-| **Lint**         | Pre-commit + CI   | ESLint (and/or Biome); fail on error.                           |
-| **Format**       | Pre-commit + CI   | Prettier (or formatter); check only.                            |
-| **Types**        | CI                | `pnpm -r exec tsc --noEmit` (or per-package) in monorepo.       |
-| **Unit tests**   | CI                | `pnpm test`; require green.                                     |
-| **Build**        | CI                | `pnpm build` (or build only affected packages).                 |
-| **Security**     | CI                | `pnpm audit` or similar; optional "0 high/critical" for merge.  |
-| **AI PR review** | Optional          | Bot posts summary/suggestions; human still required to approve. |
-| **Human review** | Branch protection | At least 1 (or 2) approvals; no self-merge for `main`.          |
+| Gate             | Where             | What                                                                                                         |
+| ---------------- | ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Lint**         | Pre-commit + CI   | ESLint (and/or Biome); fail on error.                                                                        |
+| **Format**       | Pre-commit + CI   | Prettier (or formatter); check only.                                                                         |
+| **Types**        | CI                | `pnpm -r exec tsc --noEmit` (or per-package) in monorepo.                                                    |
+| **Unit tests**   | CI                | `pnpm test`; require green.                                                                                  |
+| **Build**        | CI                | `pnpm build` (or build only affected packages).                                                              |
+| **Security**     | CI                | `pnpm audit` or similar; optional "0 high/critical" for merge.                                               |
+| **AI PR review** | CodeRabbit (auto) | CodeRabbit posts summary, inline comments, and one-click fixes on every PR; human still required to approve. |
+| **Human review** | Branch protection | At least 1 (or 2) approvals; no self-merge for `main`.                                                       |
 
 Suggested order in CI: **lint → typecheck → test → build** (fail fast).
 
 ### AI integration points
 
-| Step          | How AI helps                    | Tool / approach                                                                 |
-| ------------- | ------------------------------- | ------------------------------------------------------------------------------- |
-| Branch name   | Suggests from ticket/task       | Cursor / script reading ticket title.                                           |
-| Commits       | Conventional message + scope    | Cursor "Generate commit message"; pre-commit hook can check format.             |
-| PR title/body | From commits or ticket          | GitHub Copilot PR description; or small script using API.                       |
-| Code review   | First-pass review, risks, style | GitHub Copilot PR review; or custom bot (e.g. Bedrock/OpenAI) commenting on PR. |
-| Human review  | Focus on what AI missed         | Human reviews AI summary + diff; approves or requests changes.                  |
+| Step          | How AI helps                    | Tool / approach                                                                          |
+| ------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
+| Branch name   | Suggests from ticket/task       | Cursor / script reading ticket title.                                                    |
+| Commits       | Conventional message + scope    | Cursor sparkle icon (✨) in Source Control panel; commitlint rejects bad format.         |
+| PR title/body | Title + body from diff/commits  | Cursor Agent generates via `gh pr create`; CodeRabbit adds walkthrough comment.          |
+| Code review   | First-pass review, risks, style | **CodeRabbit** auto-review: summary, inline comments, severity ranking, one-click fixes. |
+| Human review  | Focus on what AI missed         | Human reviews CodeRabbit summary + diff; approves or requests changes.                   |
+
+### AI-assisted commits and PR creation
+
+**Commit messages — Cursor sparkle icon:**
+
+1. Stage files in the Source Control panel (`Ctrl+Shift+G`).
+2. Click the **sparkle icon (✨)** next to the commit message input (or bind to a shortcut via Keyboard Shortcuts → "Generate Commit Message").
+3. Cursor reads the staged diff and generates a message. Add a `.cursor/rules/commits.mdc` rule (always-apply) so Cursor uses Conventional Commits format: `type(scope): description`. See [code-repo-pr-process-plan.md](./code-repo-pr-process-plan.md) (step 3 under "Commit format") for the full `.cursor/rules/commits.mdc` frontmatter and body.
+4. Commitlint (`@commitlint/config-conventional`) validates the message via the husky `commit-msg` hook. If the format is wrong, the commit is rejected and you fix the message. The Cursor rule guides AI generation; commitlint enforces the format.
+
+Flow: `Stage → Sparkle icon generates message → Commit → Commitlint validates → Lint-staged runs prettier → Done`
+
+**PR title and body — Cursor Agent + CodeRabbit:**
+
+Two layers handle PR documentation automatically:
+
+| Layer            | What it generates                                                                        | When                                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Cursor Agent** | PR title + body (from diff and commits)                                                  | At PR creation time — ask the agent "create a PR for this branch" or use `gh pr create` with AI-generated arguments. |
+| **CodeRabbit**   | Detailed walkthrough comment: file-by-file summary, change categories, sequence diagrams | Automatically within minutes after the PR is opened.                                                                 |
+
+The Cursor Agent generates the initial PR title and description. CodeRabbit then adds a comprehensive review comment that serves as the detailed summary. Between the two, the PR is fully documented without manual writing.
+
+**Alternative: `gh` CLI one-liner** (if not using Cursor Agent):
+
+```bash
+gh pr create \
+  --title "$(git log main..HEAD --format='%s' | head -1)" \
+  --body "$(git log main..HEAD --format='- %s')"
+```
+
+Uses the first commit as the title and all commits as a bullet list for the body.
 
 ---
 
@@ -218,16 +301,16 @@ Use the **AI integration points** table earlier in this doc to plug your chosen 
 - **Faster, consistent PRs:** AI-assisted branch names, conventional commits, and PR descriptions reduce manual work and keep history consistent.
 - **Earlier feedback:** Pre-commit hooks and CI catch lint, type, and test failures before human review.
 - **Clear quality bar:** Quality gates and branch protection prevent merging with failing checks or without approval.
-- **Human focus:** AI does first-pass review and suggestions; humans concentrate on design, domain logic, and edge cases.
+- **Human focus:** CodeRabbit does first-pass review with severity-ranked feedback; humans concentrate on design, domain logic, and edge cases.
 - **Single pipeline:** One CI config (e.g. GitHub Actions) for the pnpm monorepo, with optional filtering by changed packages.
 - **Strong automation:** GitHub’s APIs and Actions (or equivalent) support branch protection, status checks, and optional deploy on merge.
 
 ### Potential issues
 
-- **AI mistakes:** AI can suggest wrong commits, descriptions, or review comments; **mandatory human review** mitigates this.
+- **AI mistakes:** CodeRabbit (or any AI reviewer) can suggest incorrect fixes or flag false positives; **mandatory human review** mitigates this. Tune `.coderabbit.yaml` to reduce noise over time.
 - **Over-reliance on AI:** Teams may skip reading diffs; keep “at least one human approval” and encourage reviewers to use AI as support, not replacement.
 - **Bitbucket limits:** Pipeline minutes and stricter caps can make CI/CD more constrained than on GitHub/GitLab.
-- **Setup and maintenance:** Branch protection, status checks, and optional bots require one-time setup and occasional tuning.
+- **Setup and maintenance:** Branch protection, status checks, and CodeRabbit require one-time setup and occasional tuning (`.coderabbit.yaml` for noise reduction).
 - **CI as bottleneck:** Long-running jobs can slow PR throughput; use caching, parallel jobs, and (where possible) only run checks for changed packages.
 
 ---
@@ -249,7 +332,7 @@ Use the **AI integration points** table earlier in this doc to plug your chosen 
 ### Why this PR process
 
 - **Feature branches + conventional commits:** Keeps `main` stable, makes history readable, and allows AI to generate consistent messages and PR descriptions.
-- **AI first, human second:** AI handles repetitive review and suggestions; humans make the final call and focus on higher-value feedback.
+- **CodeRabbit first, human second:** CodeRabbit handles repetitive review (style, bugs, security) with severity-ranked feedback and one-click fixes; humans make the final call and focus on design and domain logic.
 - **Quality gates before merge:** Lint, typecheck, test, and build must pass so broken code is not merged; branch protection enforces this.
 - **Human review mandatory:** Every PR to `main` requires at least one human approval so AI does not replace accountability.
 

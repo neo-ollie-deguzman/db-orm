@@ -17,7 +17,7 @@
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.5.3",
     "@repo/db": "workspace:*",
-    "better-auth": "^1.5.3",
+    "better-auth": "^1.5.4",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.44.0"
   },
