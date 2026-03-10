@@ -32,7 +32,7 @@ CREATE TABLE "users" (
   "avatar_url" text,
   "location" text,
   "is_deleted" boolean DEFAULT false NOT NULL,
-  "two_factor_enabled" boolean DEFAULT false,
+  "two_factor_enabled" boolean DEFAULT false NOT NULL,
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL,
   "deleted_at" timestamp,
@@ -77,6 +77,7 @@ CREATE TABLE "accounts" (
 );
 
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_provider_id_account_id_unique" UNIQUE ("provider_id", "account_id");
 CREATE INDEX "idx_accounts_user_id" ON "accounts" USING btree ("user_id");
 
 CREATE TABLE "verifications" (
