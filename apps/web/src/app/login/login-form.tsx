@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Mail, KeyRound, LogIn, AlertCircle } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
 
 export function LoginForm() {
@@ -40,7 +41,8 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle size={16} className="shrink-0" />
           {error}
         </div>
       )}
@@ -52,16 +54,21 @@ export function LoginForm() {
         >
           Email
         </label>
-        <input
-          id="email"
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-          placeholder="you@example.com"
-        />
+        <div className="relative mt-1">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <Mail size={16} className="text-gray-400" />
+          </div>
+          <input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm transition-colors focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+            placeholder="you@example.com"
+          />
+        </div>
       </div>
 
       <div>
@@ -71,23 +78,29 @@ export function LoginForm() {
         >
           Password
         </label>
-        <input
-          id="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-          placeholder="Enter your password"
-        />
+        <div className="relative mt-1">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <KeyRound size={16} className="text-gray-400" />
+          </div>
+          <input
+            id="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm transition-colors focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+            placeholder="Enter your password"
+          />
+        </div>
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
       >
+        <LogIn size={16} />
         {loading ? "Signing in..." : "Sign in"}
       </button>
     </form>

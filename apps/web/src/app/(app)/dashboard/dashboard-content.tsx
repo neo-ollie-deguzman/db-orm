@@ -9,6 +9,7 @@ import {
   ApiError,
   type MeResponse,
 } from "@/lib/api-client";
+import { Plus, RefreshCw, FilterX } from "lucide-react";
 import { Calendar } from "./calendar";
 import { CreateReminderDialog, EditReminderDialog } from "./reminder-dialog";
 import type { Reminder, ReminderStatus } from "./mock-data";
@@ -59,50 +60,6 @@ function deriveUniqueUsers(reminders: Reminder[]): UniqueUser[] {
     }
   }
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-}
-
-// ─── Icons ───────────────────────────────────────────────────────────────────
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
-  );
-}
-
-function RefreshIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-      <path d="M3 3v5h5" />
-      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-      <path d="M16 16h5v5" />
-    </svg>
-  );
 }
 
 // ─── Loading skeleton ────────────────────────────────────────────────────────
@@ -158,7 +115,7 @@ function ErrorBanner({
         onClick={onRetry}
         className="mt-4 inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
       >
-        <RefreshIcon />
+        <RefreshCw size={16} />
         Retry
       </button>
     </div>
@@ -354,7 +311,7 @@ export function DashboardContent() {
   ).length;
 
   const selectClassName =
-    "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none";
+    "appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[position:right_0.5rem_center] bg-no-repeat";
 
   return (
     <div>
@@ -380,7 +337,7 @@ export function DashboardContent() {
           disabled={loading}
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
         >
-          <PlusIcon />
+          <Plus size={18} />
           Add Reminder
         </button>
       </div>
@@ -440,8 +397,9 @@ export function DashboardContent() {
                   scroll: false,
                 });
               }}
-              className="text-sm font-medium text-primary hover:text-primary-dark"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-dark"
             >
+              <FilterX size={14} />
               Clear filters
             </button>
           )}

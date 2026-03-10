@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { Plus, Save, Trash2, AlertTriangle, X as XIcon } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
 import type { Reminder, ReminderStatus } from "./mock-data";
@@ -104,7 +105,7 @@ export function CreateReminderDialog({
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as ReminderStatus)}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+            className="mt-1 block w-full appearance-none rounded-lg border border-gray-300 py-2 pl-3 pr-9 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[position:right_0.5rem_center] bg-no-repeat"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -121,8 +122,9 @@ export function CreateReminderDialog({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
           >
+            <XIcon size={14} />
             Cancel
           </button>
           <button
@@ -130,7 +132,7 @@ export function CreateReminderDialog({
             disabled={saving}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
           >
-            {saving && <Spinner />}
+            {saving ? <Spinner /> : <Plus size={16} />}
             {saving ? "Creating…" : "Create"}
           </button>
         </div>
@@ -268,7 +270,12 @@ export function EditReminderDialog({
         onClose={() => setConfirmDelete(false)}
         maxWidth="max-w-sm"
       >
-        <h2 className="text-lg font-semibold">Delete Reminder</h2>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+            <AlertTriangle size={20} className="text-red-600" />
+          </div>
+          <h2 className="text-lg font-semibold">Delete Reminder</h2>
+        </div>
         <p className="mt-2 text-sm text-gray-500">
           Are you sure you want to delete{" "}
           <span className="font-medium text-gray-900">
@@ -282,8 +289,9 @@ export function EditReminderDialog({
             type="button"
             onClick={() => setConfirmDelete(false)}
             disabled={deleting}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
           >
+            <XIcon size={14} />
             Cancel
           </button>
           <button
@@ -292,7 +300,7 @@ export function EditReminderDialog({
             disabled={deleting}
             className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
           >
-            {deleting && <Spinner />}
+            {deleting ? <Spinner /> : <Trash2 size={16} />}
             {deleting ? "Deleting…" : "Delete"}
           </button>
         </div>
@@ -303,6 +311,9 @@ export function EditReminderDialog({
   const inputClassName = isOwner
     ? "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
     : "mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500";
+
+  const selectDropdownStyle =
+    "appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[position:right_0.5rem_center] bg-no-repeat !pl-3 !pr-9";
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -361,7 +372,7 @@ export function EditReminderDialog({
             value={status}
             onChange={(e) => setStatus(e.target.value as ReminderStatus)}
             disabled={!isOwner}
-            className={inputClassName}
+            className={`${inputClassName} ${selectDropdownStyle}`}
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -379,8 +390,9 @@ export function EditReminderDialog({
               type="button"
               onClick={() => setConfirmDelete(true)}
               disabled={busy}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
             >
+              <Trash2 size={14} />
               Delete
             </button>
             <div className="flex gap-3">
@@ -388,8 +400,9 @@ export function EditReminderDialog({
                 type="button"
                 onClick={onClose}
                 disabled={busy}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
               >
+                <XIcon size={14} />
                 Cancel
               </button>
               <button
@@ -397,7 +410,7 @@ export function EditReminderDialog({
                 disabled={busy}
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
               >
-                {saving && <Spinner />}
+                {saving ? <Spinner /> : <Save size={16} />}
                 {saving ? "Saving…" : "Save"}
               </button>
             </div>
@@ -407,8 +420,9 @@ export function EditReminderDialog({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
+              <XIcon size={14} />
               Close
             </button>
           </div>

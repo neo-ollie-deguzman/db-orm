@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Trash2, AlertTriangle, X as XIcon } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
+import { Spinner } from "@/components/ui/spinner";
 import { deleteUser } from "./actions";
 
 export function DeleteUserButton({
@@ -24,44 +27,48 @@ export function DeleteUserButton({
     <>
       <button
         onClick={() => setShowConfirm(true)}
-        className="rounded-md px-2.5 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+        className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
       >
+        <Trash2 size={14} />
         Delete
       </button>
 
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setShowConfirm(false)}
-          />
-          <div className="relative w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold">Delete User</h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Are you sure you want to delete{" "}
-              <span className="font-medium text-gray-900">{userName}</span>?
-              This action can be undone by an admin.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowConfirm(false)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-              >
-                {isPending ? "Deleting..." : "Delete"}
-              </button>
-            </div>
+      <Modal
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        maxWidth="max-w-sm"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+            <AlertTriangle size={20} className="text-red-600" />
           </div>
+          <h2 className="text-lg font-semibold">Delete User</h2>
         </div>
-      )}
+        <p className="mt-2 text-sm text-gray-500">
+          Are you sure you want to delete{" "}
+          <span className="font-medium text-gray-900">{userName}</span>? This
+          action can be undone by an admin.
+        </p>
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => setShowConfirm(false)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <XIcon size={14} />
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isPending}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+          >
+            {isPending ? <Spinner /> : <Trash2 size={16} />}
+            {isPending ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </Modal>
     </>
   );
 }

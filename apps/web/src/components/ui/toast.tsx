@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { CircleCheck, CircleX } from "lucide-react";
 
 type ToastType = "success" | "error";
 
@@ -27,47 +28,6 @@ export function useToast() {
   return { toasts, addToast };
 }
 
-function CheckCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="m9 11 3 3L22 4" />
-    </svg>
-  );
-}
-
-function XCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m15 9-6 6" />
-      <path d="m9 9 6 6" />
-    </svg>
-  );
-}
-
 export function ToastContainer({ toasts }: { toasts: Toast[] }) {
   if (toasts.length === 0) return null;
 
@@ -83,9 +43,9 @@ export function ToastContainer({ toasts }: { toasts: Toast[] }) {
           }`}
         >
           {toast.type === "success" ? (
-            <CheckCircleIcon className="h-4 w-4 shrink-0" />
+            <CircleCheck size={16} className="shrink-0" />
           ) : (
-            <XCircleIcon className="h-4 w-4 shrink-0" />
+            <CircleX size={16} className="shrink-0" />
           )}
           {toast.message}
         </div>
