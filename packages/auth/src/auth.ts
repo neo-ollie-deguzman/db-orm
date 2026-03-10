@@ -9,13 +9,13 @@ const envBaseUrl = process.env.BETTER_AUTH_URL?.trim();
 const baseURL = envBaseUrl || "http://localhost:3000";
 
 const envSecret = process.env.BETTER_AUTH_SECRET?.trim();
+const isProductionRuntime =
+  process.env.NODE_ENV === "production" && !process.env.CI;
 const secret =
   envSecret ||
-  (process.env.NODE_ENV === "production"
-    ? undefined
-    : "dev-secret-min-32-chars-change-in-prod");
+  (isProductionRuntime ? undefined : "dev-secret-min-32-chars-change-in-prod");
 
-if (process.env.NODE_ENV === "production" && !secret) {
+if (isProductionRuntime && !secret) {
   throw new Error(
     "BETTER_AUTH_SECRET is required in production. Set the environment variable before starting.",
   );

@@ -38,8 +38,28 @@ function defaultHeaders(includeCookie: boolean): HeadersInit {
   return headers;
 }
 
+async function checkServer(): Promise<boolean> {
+  try {
+    await fetch(BASE_ORIGIN, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(3000),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function run() {
   console.log("\n  API Test Suite\n  ==============\n");
+
+  if (!(await checkServer())) {
+    console.log(
+      "  Skipped: dev server not reachable at %s\n  Start it with `pnpm dev` and seed the DB before running test:api.\n",
+      BASE_ORIGIN,
+    );
+    process.exit(0);
+  }
 
   // ── 0. Sign in (BetterAuth) ───────────────────────────────────────
   const signInRes = await fetch(`${BASE_ORIGIN}/api/auth/sign-in/email`, {
