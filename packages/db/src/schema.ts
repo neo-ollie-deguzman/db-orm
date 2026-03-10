@@ -148,7 +148,7 @@ export const users = pgTable(
     image: text("avatar_url"),
     location: text("location"),
     isDeleted: boolean("is_deleted").default(false).notNull(),
-    twoFactorEnabled: boolean("two_factor_enabled").default(false),
+    twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     deletedAt: timestamp("deleted_at"),
@@ -230,7 +230,13 @@ export const accounts = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [index("idx_accounts_user_id").on(table.userId)],
+  (table) => [
+    unique("accounts_provider_id_account_id_unique").on(
+      table.providerId,
+      table.accountId,
+    ),
+    index("idx_accounts_user_id").on(table.userId),
+  ],
 );
 
 export const accountsRelations = relations(accounts, ({ one }) => ({

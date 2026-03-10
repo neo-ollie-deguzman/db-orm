@@ -12,6 +12,17 @@ export function CreateUserDialog() {
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
+  function handleOpen() {
+    setError(null);
+    formRef.current?.reset();
+    setOpen(true);
+  }
+
+  function handleClose() {
+    if (isPending) return;
+    setOpen(false);
+  }
+
   function handleSubmit(formData: FormData) {
     setError(null);
     startTransition(async () => {
@@ -28,14 +39,14 @@ export function CreateUserDialog() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={handleOpen}
         className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
       >
         <UserPlus size={16} />
         Add User
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)}>
+      <Modal open={open} onClose={handleClose}>
         <h2 className="text-lg font-semibold">Create User</h2>
         <form ref={formRef} action={handleSubmit} className="mt-4 space-y-4">
           <div>
@@ -104,8 +115,9 @@ export function CreateUserDialog() {
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => setOpen(false)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              onClick={handleClose}
+              disabled={isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
             >
               <XIcon size={14} />
               Cancel

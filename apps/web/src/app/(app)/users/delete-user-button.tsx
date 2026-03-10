@@ -46,8 +46,8 @@ export function DeleteUserButton({
         </div>
         <p className="mt-2 text-sm text-gray-500">
           Are you sure you want to delete{" "}
-          <span className="font-medium text-gray-900">{userName}</span>? This
-          action can be undone by an admin.
+          <span className="font-medium text-gray-900">{userName}</span>? The
+          account will be deactivated and cannot be restored.
         </p>
         <div className="mt-6 flex justify-end gap-3">
           <button
