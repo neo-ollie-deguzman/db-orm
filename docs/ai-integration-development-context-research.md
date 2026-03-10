@@ -189,8 +189,13 @@ The following are concrete examples of what each context file would look like fo
 
 pnpm install # install all workspace deps
 pnpm dev # start Next.js dev server (Turbopack)
-pnpm build # production build
-pnpm lint # next lint
+pnpm build # build all packages then web app
+pnpm build:packages # build only packages/\* (tsc)
+pnpm lint # eslint via next
+pnpm typecheck # build packages + tsc --noEmit across repo
+pnpm test # run API tests
+pnpm format # prettier --write .
+pnpm format:check # prettier --check .
 pnpm generate:openapi # regenerate openapi.json from Zod schemas
 pnpm check:contracts # verify contracted routes import from @repo/api-contracts
 pnpm db:generate # drizzle-kit generate migrations
@@ -198,21 +203,24 @@ pnpm db:migrate # run migrations
 pnpm db:push # push schema to DB
 pnpm db:seed # seed database
 pnpm db:apply-rls # apply row-level security policies
+pnpm db:bootstrap-migrations # bootstrap drizzle migration metadata
 
 ## Project structure
 
 apps/web/ # Next.js 16 app (routes, components, API handlers)
 packages/api-contracts/ # Zod schemas + OpenAPI generation (source of truth for API shape)
-packages/auth/ # JWT validation (jose) and API key verification
+packages/auth/ # BetterAuth (email/password, two-factor, magic link, Drizzle adapter)
 packages/core/ # Business logic (use-case functions, no HTTP types)
 packages/db/ # Drizzle ORM schema, client, tenant helper
 docs/ # Architecture plans and research
+scripts/ # Repo-level scripts (check-contract-usage.mjs)
 
 ## Code style
 
 - TypeScript strict mode everywhere.
+- Prettier for formatting; enforced via husky + lint-staged on pre-commit.
 - Zod for all input/output validation; schemas live in @repo/api-contracts.
-- Tables: plural (users, reminders). Columns: camelCase in code, snake_case in DB.
+- Tables: plural (users, reminders, tenants). Columns: camelCase in code, snake_case in DB.
 - Functions: camelCase (createUser, listUsers). Errors: Core\*Error (CoreNotFoundError, CoreConflictError).
 - Schemas: \*Schema suffix (CreateUserBodySchema, UserResponseSchema).
 - Barrel exports in each package index.ts; no subpath exports.
@@ -221,14 +229,19 @@ docs/ # Architecture plans and research
 
 - Contract-first: define Zod schemas in @repo/api-contracts BEFORE writing handlers.
 - Core layer (@repo/core) contains business logic. Functions take (tenantId, ...) and call withTenant(). No HTTP types (Request, Response, NextRequest) in core.
-- API handlers: parse with contract schemas → resolve auth/tenant → call @repo/core → serialize with validateResponse.
-- Multi-tenancy: withTenant(tenantId, callback) sets app.current_tenant_id; RLS policies enforce isolation.
-- Error mapping: CoreNotFoundError → 404, CoreConflictError → 409, Zod failure → 422, unauthenticated → 401.
+- API handlers wrap with withAuth() from @/lib/with-auth.ts — it resolves auth + tenant and catches errors. Do NOT call getCurrentUser/getTenantId manually in route files.
+- Validation: use .safeParse() on contract schemas; on failure call validationError() from @/lib/errors.ts.
+- Serialization: pass core results through serializeUser() or serializeReminder() from @/lib/validations/ before returning responses. Use validateResponse() for contracted response shapes.
+- Error helpers: use notFound(), conflict(), unauthorized(), validationError() from @/lib/errors.ts. Do NOT construct NextResponse.json({ error }) manually.
+- Multi-tenancy: withTenant(tenantId, callback) sets app.current_tenant_id; RLS policies enforce isolation on users and reminders tables.
+- Auth: BetterAuth handles sessions, accounts, verification, and two-factor. Auth routes live at apps/web/src/app/api/auth/[...all]/route.ts.
+- Error mapping: CoreNotFoundError → notFound(), CoreConflictError → conflict(), Zod failure → validationError(), unauthenticated → unauthorized().
 
 ## Git workflow
 
 - Branch naming: feature/<ticket>-short-name, fix/<ticket>-short-name.
-- Conventional commits (feat:, fix:, chore:, docs:).
+- Conventional commits (feat:, fix:, chore:, docs:) — enforced by commitlint.
+- Husky + lint-staged: prettier runs on staged files before each commit.
 - Squash merge to main.
 
 ## Boundaries
@@ -238,6 +251,7 @@ docs/ # Architecture plans and research
 - NEVER commit .env files or real credentials.
 - NEVER modify packages/db/drizzle/ migration files after they have been applied.
 - NEVER add HTTP types (Request, Response, NextRequest) to @repo/core.
+- NEVER modify BetterAuth-managed tables (sessions, accounts, verifications, two_factors) directly via Drizzle; use the BetterAuth API in @repo/auth instead.
 ```
 
 **Example CLAUDE.md (project root — Claude Code-specific):**
@@ -245,7 +259,7 @@ docs/ # Architecture plans and research
 ```markdown
 # CLAUDE.md
 
-This is a pnpm monorepo: Next.js 16 + Drizzle ORM + Zod contracts + multi-tenant RLS on Neon Postgres.
+This is a pnpm monorepo: Next.js 16 + Drizzle ORM + Zod contracts + BetterAuth + multi-tenant RLS on Neon Postgres.
 
 ## Quick reference
 
@@ -254,13 +268,16 @@ See AGENTS.md for commands, project structure, code style, and boundaries — al
 ## Claude-specific instructions
 
 - When creating a new API route, read docs/contract-first-agent-guide.md first and follow it exactly.
+- All route handlers must use the withAuth() wrapper from @/lib/with-auth.ts. Never call getCurrentUser/getTenantId directly in route files.
 - When modifying DB schema, run `pnpm db:generate` after changes to create a migration, then `pnpm db:migrate`.
 - When adding a new Zod schema to @repo/api-contracts, re-export it from packages/api-contracts/src/index.ts and run `pnpm generate:openapi`.
-- After changing any package under packages/\*, run `pnpm build` from the repo root to rebuild.
+- After changing any package under packages/\*, run `pnpm build:packages` to rebuild packages, or `pnpm build` to rebuild everything.
+- Run `pnpm format` before committing, or rely on the husky pre-commit hook to auto-format staged files.
+- For BetterAuth changes, see docs/data-migration-betterauth.md for migration context.
 
 ## Current focus
 
-Multi-tenancy hardening: ensuring all @repo/core functions use withTenant() and RLS policies are applied to every table.
+BetterAuth integration and multi-tenancy hardening: ensuring all @repo/core functions use withTenant() and RLS policies are applied to every tenant-scoped table.
 ```
 
 **Example `.claude/rules/api-handlers.md` (scoped rule for Claude Code):**
@@ -270,11 +287,13 @@ Multi-tenancy hardening: ensuring all @repo/core functions use withTenant() and 
 
 Applies when working on files in apps/web/src/app/api/.
 
-1. Import request/response schemas from @repo/api-contracts.
-2. Use .safeParse() for body validation; return 400 with error.issues on failure.
-3. Call getCurrentUser() and getTenantId() for auth context.
+1. Wrap every exported handler with withAuth() from @/lib/with-auth.ts. The wrapper provides { currentUser, tenantId } and handles auth/error boilerplate.
+2. Import request/response schemas from @repo/api-contracts.
+3. Use .safeParse() for body validation; on failure call validationError(parsed.error) from @/lib/errors.ts.
 4. Delegate to @repo/core functions; do not put business logic in the handler.
-5. Return JSON with the contracted response type using validateResponse().
+5. Serialize results through serializeUser() or serializeReminder() from @/lib/validations/ before returning.
+6. Use validateResponse(Schema, data) for contracted response shapes.
+7. Use error helpers from @/lib/errors.ts: notFound(), conflict(), unauthorized(). Do not construct error responses manually.
 ```
 
 **Example `.cursor/rules/core.mdc` (always-apply — Cursor-specific):**
@@ -288,13 +307,16 @@ alwaysApply: true
 
 # Core conventions
 
-- This is a pnpm monorepo: apps/web (Next.js 16), packages/api-contracts (Zod), packages/auth (jose JWT), packages/core (business logic), packages/db (Drizzle ORM on Neon Postgres).
-- TypeScript strict. Zod for validation. Drizzle for DB access. Multi-tenant via RLS.
+- This is a pnpm monorepo: apps/web (Next.js 16), packages/api-contracts (Zod), packages/auth (BetterAuth), packages/core (business logic), packages/db (Drizzle ORM on Neon Postgres).
+- TypeScript strict. Zod for validation. Drizzle for DB access. Multi-tenant via RLS. Prettier for formatting.
 - Contract-first API: Zod schemas in @repo/api-contracts are the source of truth.
+- API handlers use withAuth() wrapper from @/lib/with-auth.ts for auth + tenant resolution.
 - Core functions take (tenantId, ...) and use withTenant(). No HTTP types in @repo/core.
-- Error mapping: CoreNotFoundError → 404, CoreConflictError → 409, Zod → 422.
+- Error helpers from @/lib/errors.ts: notFound(), conflict(), unauthorized(), validationError().
+- Serializers from @/lib/validations/: serializeUser(), serializeReminder().
 - Tables plural, columns camelCase in code / snake_case in DB.
 - Functions camelCase, errors Core*Error, schemas *Schema suffix.
+- Conventional commits enforced by commitlint; prettier on pre-commit via husky + lint-staged.
 ```
 
 **Example `.cursor/rules/api-routes.mdc` (glob-scoped — Cursor-specific):**
@@ -308,27 +330,36 @@ alwaysApply: false
 
 # API route handler conventions
 
-- Import schemas from @repo/api-contracts. Use .safeParse() for validation.
-- Resolve auth with getCurrentUser() and getTenantId() from @/lib/auth and @/lib/tenant.
+- Wrap every exported handler with withAuth() from @/lib/with-auth.ts. It provides { currentUser, tenantId } and handles auth + top-level errors.
+- Import schemas from @repo/api-contracts. Use .safeParse() for validation; on failure call validationError() from @/lib/errors.ts.
 - Call @repo/core functions for business logic; keep handlers thin.
-- Return responses using validateResponse() with the contracted response schema.
-- Error handling: wrap core calls in try/catch, map CoreNotFoundError → 404, CoreConflictError → 409.
+- Serialize results with serializeUser() or serializeReminder() from @/lib/validations/ before returning.
+- Use validateResponse(Schema, data) for contracted response shapes.
+- Error handling: catch CoreNotFoundError → notFound(), CoreConflictError → conflict() from @/lib/errors.ts. Let unexpected errors propagate to the withAuth wrapper.
 
 Example handler structure:
 
+import { NextRequest, NextResponse } from "next/server";
 import { CreateUserBodySchema, UserResponseSchema } from "@repo/api-contracts";
-import { createUser } from "@repo/core";
-import { getCurrentUser } from "@/lib/auth";
-import { getTenantId } from "@/lib/tenant";
+import { createUser, CoreConflictError } from "@repo/core";
+import { validationError, conflict } from "@/lib/errors";
+import { validateResponse } from "@/lib/validate-response";
+import { serializeUser } from "@/lib/validations/users";
+import { withAuth } from "@/lib/with-auth";
 
-export async function POST(request: Request) {
-const body = CreateUserBodySchema.safeParse(await request.json());
-if (!body.success) return Response.json(body.error.issues, { status: 400 });
-const user = await getCurrentUser();
-const tenantId = getTenantId(user);
-const created = await createUser(tenantId, body.data);
-return Response.json(created, { status: 201 });
+export const POST = withAuth(async ({ tenantId }, request: NextRequest) => {
+const parsed = CreateUserBodySchema.safeParse(await request.json());
+if (!parsed.success) return validationError(parsed.error);
+
+try {
+const created = await createUser(tenantId, parsed.data);
+const body = validateResponse(UserResponseSchema, serializeUser(created));
+return NextResponse.json(body, { status: 201 });
+} catch (e) {
+if (e instanceof CoreConflictError) return conflict(e.message);
+throw e;
 }
+});
 ```
 
 **Example `.cursor/rules/db-schema.mdc` (glob-scoped — Cursor-specific):**
@@ -343,13 +374,50 @@ alwaysApply: false
 # Database conventions
 
 - Use Drizzle ORM pgTable() for all table definitions.
-- Table names: plural (users, reminders, tenants).
+- Table names: plural (users, reminders, tenants, sessions, accounts, verifications).
 - Column mapping: camelCase in TypeScript, snake_case in Postgres (use { mapWith } or explicit .name()).
 - Every table with tenant-scoped data MUST have a tenantId column referencing tenants.id.
 - After schema changes: run `pnpm db:generate` then `pnpm db:migrate`.
 - Never edit existing migration files in packages/db/drizzle/.
 - RLS policies: after adding a tenant-scoped table, update the RLS script and run `pnpm db:apply-rls`.
+- BetterAuth-managed tables (sessions, accounts, verifications, two_factors) are controlled by @repo/auth. Do NOT modify their structure directly; changes flow through BetterAuth config.
+- Enums: reminder_status (pending, completed, dismissed), tenant_plan (free, pro, enterprise), domain_type (subdomain, custom), tenant_role (owner, admin, member).
 ```
+
+**Example `.cursor/rules/commits.mdc` (always-apply — commit message format for Cursor's sparkle icon):**
+
+```markdown
+---
+description: Commit message format for AI-generated commits
+globs:
+alwaysApply: true
+---
+
+# Commit message format
+
+Generate commit messages in Conventional Commits format:
+
+type(scope): short description
+
+Types: feat, fix, refactor, docs, test, chore, ci, perf, style
+Scope: package or area (api-contracts, core, db, auth, api, web). Omit scope only if change spans many packages.
+Description: lowercase, imperative mood, no period, max 72 chars.
+
+Examples:
+feat(api): add DELETE /api/reminders/:id endpoint
+fix(core): prevent duplicate email on createUser
+refactor(db): extract tenant helper into separate module
+docs: update PR process with CodeRabbit
+chore: upgrade drizzle-orm to 0.45
+
+Multi-line body (optional, for complex changes):
+feat(api): add soft-delete for reminders
+
+Set isDeleted=true instead of hard delete.
+RLS policies still apply to soft-deleted rows.
+```
+
+This rule is read by Cursor when generating commit messages (sparkle icon / `Cmd+M`). Commitlint (`@commitlint/config-conventional`) then validates the result via the husky `commit-msg` hook, rejecting anything that doesn't match the format.
 
 **How these examples layer together (no duplication):**
 
@@ -359,8 +427,67 @@ alwaysApply: false
 | Claude-specific workflow tips, current focus        | CLAUDE.md                       | Only Claude Code reads this.                             |
 | Scoped API handler rules for Claude                 | `.claude/rules/api-handlers.md` | Loaded only when Claude works on API files.              |
 | Core conventions (always-on) for Cursor             | `.cursor/rules/core.mdc`        | alwaysApply; Cursor-specific metadata.                   |
+| Commit message format for Cursor                    | `.cursor/rules/commits.mdc`     | alwaysApply; Cursor reads this when generating commits.  |
 | API route rules (glob-scoped) for Cursor            | `.cursor/rules/api-routes.mdc`  | Loaded only when editing `apps/web/src/app/api/**/*.ts`. |
 | DB schema rules (glob-scoped) for Cursor            | `.cursor/rules/db-schema.mdc`   | Loaded only when editing `packages/db/src/**/*.ts`.      |
+
+### Governance: creating, updating, and protecting context files
+
+Context files are code. They go through PRs, require designated reviewers, and cannot be changed without approval.
+
+**Creating context files:**
+
+- Have 1-2 senior devs write the initial files based on existing conventions. Do not auto-generate with AI — bad instructions compound across every task.
+- Review the initial files as a team PR so everyone agrees on the baseline.
+- Start minimal. Add rules only when the AI makes repeated mistakes — each unnecessary instruction degrades performance across all instructions.
+
+**Keeping them updated:**
+
+If a PR changes a convention, it must also update the context files. Two mechanisms enforce this:
+
+1. **CODEOWNERS** — GitHub requires designated reviewers for changes to protected files:
+
+```
+# .github/CODEOWNERS
+AGENTS.md                    @team-leads
+.cursor/rules/               @team-leads
+```
+
+Any PR touching those files auto-requests approval from `@team-leads` before merge.
+
+2. **CodeRabbit custom instruction** — flag PRs that change conventions without updating context files:
+
+```yaml
+# .coderabbit.yaml
+reviews:
+  instructions: |
+    If this PR introduces a new convention, package, or pattern,
+    check whether AGENTS.md or .cursor/rules/ were updated.
+    Flag if not.
+```
+
+**Restricting access (preventing accidental removal of key instructions):**
+
+GitHub does not support per-file write locks, but CODEOWNERS + branch protection achieves the same effect:
+
+| Mechanism             | What it does                                                                  |
+| --------------------- | ----------------------------------------------------------------------------- |
+| **CODEOWNERS**        | Requires designated reviewers for changes to `AGENTS.md` and `.cursor/rules/` |
+| **Branch protection** | No direct push to `main`; all changes go through PR                           |
+| **Required reviews**  | At least 1 approval from a code owner before merge                            |
+| **CodeRabbit**        | Flags removals or large changes to context files as high-severity             |
+
+With this setup, someone cannot accidentally remove a key instruction: they cannot push directly to `main` (branch protection), their PR auto-requests review from `@team-leads` (CODEOWNERS), a team lead must approve before merge, and CodeRabbit flags the deletion in its review.
+
+**Suggested ownership model:**
+
+| File                           | Owner                 | Update trigger                              |
+| ------------------------------ | --------------------- | ------------------------------------------- |
+| `AGENTS.md`                    | Tech lead / architect | New package, convention change, new command |
+| `.cursor/rules/core.mdc`       | Tech lead             | Architecture or stack change                |
+| `.cursor/rules/commits.mdc`    | Any dev (low risk)    | Commit format change                        |
+| `.cursor/rules/api-routes.mdc` | Backend lead          | Handler pattern change                      |
+| `.cursor/rules/db-schema.mdc`  | Backend lead          | Schema convention change                    |
 
 ---
 

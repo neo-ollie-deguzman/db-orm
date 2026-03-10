@@ -19,7 +19,6 @@ export {
   updateReminder,
 } from "./reminders";
 export {
-  authenticate,
   createUser,
   deleteUser,
   getUser,

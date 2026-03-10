@@ -4,7 +4,7 @@ import type {
 } from "@repo/api-contracts";
 
 export type MeResponse = {
-  id: number;
+  id: string;
   name: string;
   email: string;
   avatarUrl: string | null;

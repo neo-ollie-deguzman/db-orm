@@ -26,7 +26,7 @@ export const GET = withAuth(
       const row = await getReminder(tenantId, reminderId);
       const body: ReminderResponse = serializeReminder(row, {
         name: row.userName,
-        avatarUrl: row.userAvatarUrl,
+        avatarUrl: row.userImage,
       });
       return NextResponse.json(body);
     } catch (e) {
@@ -63,7 +63,7 @@ export const PATCH = withAuth(
       });
       const body: ReminderResponse = serializeReminder(updated, {
         name: updated.userName,
-        avatarUrl: updated.userAvatarUrl,
+        avatarUrl: updated.userImage,
       });
       return NextResponse.json(body);
     } catch (e) {

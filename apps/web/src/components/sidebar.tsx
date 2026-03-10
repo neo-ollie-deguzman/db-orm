@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { signOut } from "@/lib/auth-client";
 
 const navItems = [
   { label: "Reminders", href: "/dashboard", icon: BellIcon },
@@ -80,7 +81,7 @@ export function Sidebar({ tenantName }: { tenantName: string }) {
   async function handleLogout() {
     setLoggingOut(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await signOut();
       router.push("/login");
       router.refresh();
     } catch {

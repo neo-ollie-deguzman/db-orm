@@ -1,6 +1,5 @@
 /**
- * @repo/auth — JWT and API-key validation, tenant resolution.
- * Used by Next.js (apps/web) for session and programmatic API access.
+ * @repo/auth — BetterAuth instance and types.
+ * Used by apps/web for authentication (route handler, session verification, etc.).
  */
-export { verifyJwt, type AuthContext, type JwtSessionPayload } from "./jwt";
-export { validateApiKey, type ApiKeyContext } from "./api-key";
+export { auth, type Session, type User } from "./auth";

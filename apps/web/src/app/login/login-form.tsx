@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "@/lib/auth-client";
 
 export function LoginForm() {
   const router = useRouter();
@@ -16,15 +17,14 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const result = await signIn.email({
+        email,
+        password,
+        callbackURL: "/dashboard",
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body.error ?? "Login failed");
+      if (result.error) {
+        setError(result.error.message ?? "Sign in failed");
         return;
       }
 

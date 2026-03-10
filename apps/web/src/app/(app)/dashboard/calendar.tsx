@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { Reminder, ReminderStatus } from "./mock-data";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -69,7 +70,7 @@ type CalendarProps = {
   year: number;
   month: number;
   reminders: Reminder[];
-  currentUserId: number | null;
+  currentUserId: string | null;
   onReminderClick: (reminder: Reminder) => void;
   onDayClick: (date: Date) => void;
   onPrevMonth: () => void;
@@ -223,9 +224,12 @@ function UserAvatar({
 }) {
   if (avatarUrl) {
     return (
-      <img
+      <Image
         src={avatarUrl}
         alt={name}
+        width={16}
+        height={16}
+        unoptimized
         className="h-4 w-4 shrink-0 rounded-full object-cover sm:h-[18px] sm:w-[18px]"
       />
     );

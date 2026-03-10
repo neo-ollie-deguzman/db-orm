@@ -1,6 +1,6 @@
 # db-orm
 
-A multi-tenant SaaS proof-of-concept built with **Next.js 16**, **Drizzle ORM**, and **Neon Postgres**. The project demonstrates a contract-first API architecture with PostgreSQL Row-Level Security (RLS) for tenant isolation, JWT-based authentication, and a clean monorepo structure using pnpm workspaces.
+A multi-tenant SaaS proof-of-concept built with **Next.js 16**, **Drizzle ORM**, and **Neon Postgres**. The project demonstrates a contract-first API architecture with PostgreSQL Row-Level Security (RLS) for tenant isolation, **BetterAuth** for authentication (email/password, magic link, 2FA), and a clean monorepo structure using pnpm workspaces.
 
 ## Architecture
 
@@ -10,7 +10,7 @@ db-orm-monorepo/
 │   └── web/                  # Next.js 16 application (App Router, Turbopack)
 ├── packages/
 │   ├── api-contracts/        # Zod schemas + OpenAPI generation (contract-first)
-│   ├── auth/                 # JWT verification & API key validation
+│   ├── auth/                 # BetterAuth server config (sessions, plugins)
 │   ├── core/                 # Business logic (framework-agnostic use cases)
 │   └── db/                   # Drizzle schema, client, migrations, RLS tenant helper
 ├── scripts/                  # CI checks (contract usage enforcement)
@@ -29,7 +29,7 @@ apps/web  →  @repo/core  →  @repo/db
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@repo/db`            | Drizzle ORM schema definitions, Neon Postgres client, `withTenant()` RLS transaction helper, and migration files                                          |
 | `@repo/core`          | Framework-agnostic business logic — use-case functions that accept `(tenantId, input)` and use `@repo/db` internally. No HTTP or framework types leak in. |
-| `@repo/auth`          | JWT session verification (via `jose`) and API key validation stub. Provides `AuthContext` for route handlers.                                             |
+| `@repo/auth`          | BetterAuth server instance (Drizzle adapter, email/password, magic link, 2FA plugins). Session and user types for route handlers.                         |
 | `@repo/api-contracts` | Zod schemas for all API request/response shapes, plus a script to generate an `openapi.json` spec from those schemas.                                     |
 | `web`                 | Next.js application — API routes, React UI (Tailwind CSS v4), middleware for auth and tenant resolution.                                                  |
 
@@ -51,44 +51,48 @@ Results are cached in-memory with a 60-second TTL.
 
 ## Database Schema
 
-Four core tables with full Drizzle relations defined:
+Core tables with Drizzle relations:
 
-| Table                | Key Columns                                                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `tenants`            | `id` (uuid), `name`, `slug` (unique), `region`, `plan`, `is_active`                                                            |
-| `tenant_domains`     | `id` (uuid), `tenant_id` (FK), `domain` (unique), `type` (subdomain/custom), `is_verified`                                     |
-| `tenant_memberships` | `id` (uuid), `tenant_id` (FK), `user_id` (FK), `role` (owner/admin/member)                                                     |
-| `users`              | `id` (serial), `tenant_id` (FK), `name`, `email`, `password_hash`, RLS-enforced                                                |
-| `reminders`          | `id` (serial), `tenant_id` (FK), `user_id` (FK), `note`, `status` (pending/completed/dismissed), `reminder_date`, RLS-enforced |
+| Table                | Key Columns                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| `tenants`            | `id` (uuid), `name`, `slug` (unique), `region`, `plan`, `is_active`                                    |
+| `tenant_domains`     | `id` (uuid), `tenant_id` (FK), `domain` (unique), `type` (subdomain/custom), `is_verified`             |
+| `tenant_memberships` | `id` (uuid), `tenant_id` (FK), `user_id` (FK, text), `role` (owner/admin/member)                       |
+| `users`              | `id` (text/UUID), `tenant_id` (FK), `name`, `email`, `email_verified`, `avatar_url`, RLS-enforced      |
+| `sessions`           | BetterAuth session storage (token, `user_id`, `expires_at`)                                            |
+| `accounts`           | BetterAuth credential/OAuth (`user_id`, `provider_id`, `password` for email/password)                  |
+| `reminders`          | `id` (serial), `tenant_id` (FK), `user_id` (FK, text), `note`, `status`, `reminder_date`, RLS-enforced |
 
-Soft deletes are used for `users` and `reminders` (`is_deleted`, `deleted_at`).
+Soft deletes are used for `users` and `reminders` (`is_deleted`, `deleted_at`). See [docs/data-migration-betterauth.md](./docs/data-migration-betterauth.md) for migrating from the previous schema.
 
 ## Authentication
 
-- **Login** — `POST /api/auth/login` authenticates email + password (bcrypt) within the resolved tenant, issues an HS256 JWT stored as an `httpOnly` cookie (`session`).
-- **Session** — JWT payload contains `tenantId`, `userId`, and `email`. Tokens expire after 24 hours.
-- **Middleware** — Non-public routes require a valid session cookie. API routes get `401`; page routes are redirected to `/login`.
-- **Logout** — `POST /api/auth/logout` clears the session cookie.
+- **Provider** — [BetterAuth](https://www.better-auth.com/) with Drizzle adapter; supports email/password, magic link, and two-factor (TOTP).
+- **Sign-in** — `POST /api/auth/sign-in/email` (email + password). Login UI uses the BetterAuth client (`signIn.email`).
+- **Session** — Stored in `sessions` table; cookie `better-auth.session_token` (httpOnly). Session includes user and tenant; expiry and refresh configured in `@repo/auth`.
+- **Middleware** — Non-public paths require a session cookie. API routes get `401`; page routes redirect to `/login`. Public paths: `/login`, `/api/auth`.
+- **Sign-out** — Client calls `signOut()` from the auth client; server clears the session.
 
 ## API Endpoints
 
-All endpoints require authentication (session cookie) except login.
+All endpoints require authentication (session cookie) except `/login` and `/api/auth/*`.
 
-| Method   | Path                 | Description                     |
-| -------- | -------------------- | ------------------------------- |
-| `POST`   | `/api/auth/login`    | Authenticate and create session |
-| `POST`   | `/api/auth/logout`   | Destroy session                 |
-| `GET`    | `/api/me`            | Current authenticated user      |
-| `GET`    | `/api/users`         | List users in tenant            |
-| `POST`   | `/api/users`         | Create a user                   |
-| `GET`    | `/api/users/:id`     | Get user by ID                  |
-| `PATCH`  | `/api/users/:id`     | Update a user                   |
-| `DELETE` | `/api/users/:id`     | Soft-delete a user              |
-| `GET`    | `/api/reminders`     | List reminders in tenant        |
-| `POST`   | `/api/reminders`     | Create a reminder               |
-| `GET`    | `/api/reminders/:id` | Get reminder by ID              |
-| `PATCH`  | `/api/reminders/:id` | Update a reminder               |
-| `DELETE` | `/api/reminders/:id` | Soft-delete a reminder          |
+| Method   | Path                      | Description                |
+| -------- | ------------------------- | -------------------------- |
+| `POST`   | `/api/auth/sign-in/email` | Email/password sign-in     |
+| `POST`   | `/api/auth/sign-out`      | Sign out                   |
+| (other)  | `/api/auth/*`             | BetterAuth handlers        |
+| `GET`    | `/api/me`                 | Current authenticated user |
+| `GET`    | `/api/users`              | List users in tenant       |
+| `POST`   | `/api/users`              | Create a user              |
+| `GET`    | `/api/users/:id`          | Get user by ID (UUID)      |
+| `PATCH`  | `/api/users/:id`          | Update a user              |
+| `DELETE` | `/api/users/:id`          | Soft-delete a user         |
+| `GET`    | `/api/reminders`          | List reminders in tenant   |
+| `POST`   | `/api/reminders`          | Create a reminder          |
+| `GET`    | `/api/reminders/:id`      | Get reminder by ID         |
+| `PATCH`  | `/api/reminders/:id`      | Update a reminder          |
+| `DELETE` | `/api/reminders/:id`      | Soft-delete a reminder     |
 
 Request and response shapes are defined in `@repo/api-contracts` and enforced at both the API layer (Zod parsing) and response level (runtime schema validation).
 
@@ -126,10 +130,11 @@ cp .env.example .env
 
 Required variables:
 
-| Variable       | Description                                                          |
-| -------------- | -------------------------------------------------------------------- |
-| `DATABASE_URL` | Neon Postgres connection string (`postgresql://...?sslmode=require`) |
-| `JWT_SECRET`   | Secret for signing session JWTs (min 32 chars in production)         |
+| Variable             | Description                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| `DATABASE_URL`       | Neon Postgres connection string (`postgresql://...?sslmode=require`)       |
+| `BETTER_AUTH_SECRET` | Secret for signing sessions (min 32 chars; e.g. `openssl rand -base64 32`) |
+| `BETTER_AUTH_URL`    | Base URL where the app is served (e.g. `http://localhost:3000`)            |
 
 Optional:
 
@@ -142,6 +147,8 @@ Optional:
 ```bash
 pnpm db:migrate
 ```
+
+(Or use `pnpm db:push` to push the schema directly.)
 
 ### 4. Apply RLS and create the `app_user` role
 
@@ -167,7 +174,7 @@ pnpm db:migrate-tenancy
 pnpm db:seed
 ```
 
-This creates three tenants, 15 users across them, tenant memberships, and 70 sample reminders.
+This creates three tenants, 15 users (UUIDs), credential entries in `accounts`, tenant memberships, and 70 sample reminders.
 
 | Tenant          | Slug      | Users                               |
 | --------------- | --------- | ----------------------------------- |
@@ -202,15 +209,15 @@ All scripts are run from the monorepo root via `pnpm`:
 | `pnpm build`              | Production build                                     |
 | `pnpm start`              | Start production server                              |
 | `pnpm lint`               | Run Next.js linter                                   |
+| `pnpm build:packages`     | Build all workspace packages                         |
 | `pnpm db:generate`        | Generate Drizzle migration files from schema changes |
 | `pnpm db:migrate`         | Run pending migrations                               |
 | `pnpm db:push`            | Push schema directly (skip migration files)          |
 | `pnpm db:studio`          | Open Drizzle Studio (database GUI)                   |
 | `pnpm db:seed`            | Seed database with sample data                       |
 | `pnpm db:migrate-tenancy` | Run tenancy-specific migration                       |
-| `pnpm db:migrate-auth`    | Run auth-specific migration                          |
 | `pnpm db:apply-rls`       | Apply RLS policies and create `app_user` role        |
-| `pnpm test:api`           | Run API integration tests                            |
+| `pnpm test:api`           | Run API integration tests (dev server + seeded DB)   |
 | `pnpm generate:openapi`   | Generate OpenAPI spec from contracts                 |
 | `pnpm check:contracts`    | Verify API routes import from `@repo/api-contracts`  |
 
@@ -223,7 +230,7 @@ All scripts are run from the monorepo root via `pnpm`:
 | Database        | PostgreSQL (Neon serverless)                                                  |
 | ORM             | Drizzle ORM 0.44                                                              |
 | Styling         | Tailwind CSS v4                                                               |
-| Auth            | JWT (jose), bcryptjs                                                          |
+| Auth            | BetterAuth (email/password, magic link, 2FA; Drizzle adapter)                 |
 | Validation      | Zod                                                                           |
 | API Spec        | OpenAPI 3.0 (generated from Zod schemas via `@asteasolutions/zod-to-openapi`) |
 | Package Manager | pnpm 9.15 (workspaces)                                                        |
@@ -244,3 +251,4 @@ Detailed design documents are in the `docs/` directory:
 - `code-repo-pr-process-plan.md` — Code review and PR process
 - `code-repo-pr-process-research.md` — Research on PR workflows
 - `ai-integration-development-context-research.md` — AI-assisted development context
+- `data-migration-betterauth.md` — Migrating to BetterAuth and UUID user IDs
